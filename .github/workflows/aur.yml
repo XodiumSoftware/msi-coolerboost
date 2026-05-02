@@ -1,0 +1,111 @@
+name: AUR Publish
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g. 1.0.0)'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  aur-publish:
+    name: Publish to AUR
+    runs-on: ubuntu-latest
+    environment:
+      name: aur
+    steps:
+      - id: checkout
+        name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - id: get_version
+        name: Get Version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${{ github.event.release.tag_name }}"
+          fi
+          VERSION="${VERSION#v}"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - id: setup_ssh
+        name: Setup SSH for AUR
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > ~/.ssh/aur_key
+          chmod 600 ~/.ssh/aur_key
+          cat >> ~/.ssh/config << 'SSHEOF'
+          Host aur.archlinux.org
+            HostName aur.archlinux.org
+            User aur
+            IdentityFile ~/.ssh/aur_key
+            StrictHostKeyChecking yes
+            UserKnownHostsFile ~/.ssh/aur_known_hosts
+          SSHEOF
+          ssh-keyscan aur.archlinux.org >> ~/.ssh/aur_known_hosts 2>/dev/null
+        shell: bash
+
+      - id: clone_aur
+        name: Clone AUR Repository
+        run: |
+          git clone ssh://aur@aur.archlinux.org/msi-coolerboost.git aur-repo
+        shell: bash
+
+      - id: compute_checksum
+        name: Compute Source Checksum
+        run: |
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          URL="https://github.com/XodiumSoftware/msi-coolerboost/archive/refs/tags/v${VERSION}.tar.gz"
+          curl -sL "$URL" -o source.tar.gz
+          SHA256=$(sha256sum source.tar.gz | cut -d' ' -f1)
+          echo "SHA256=$SHA256" >> $GITHUB_OUTPUT
+          rm source.tar.gz
+        shell: bash
+
+      - id: update_pkgbuild
+        name: Update PKGBUILD
+        run: |
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          SHA256="${{ steps.compute_checksum.outputs.SHA256 }}"
+          cd aur-repo
+
+          sed -i "s/^pkgver=.*/pkgver=${VERSION}/" PKGBUILD
+          sed -i "s/^pkgrel=.*/pkgrel=1/" PKGBUILD
+          sed -i "s/^sha256sums=.*/sha256sums=('${SHA256}')/" PKGBUILD
+
+          cat PKGBUILD
+        shell: bash
+
+      - id: generate_srcinfo
+        name: Generate .SRCINFO
+        run: |
+          cd aur-repo
+          if command -v makepkg &> /dev/null; then
+            makepkg --printsrcinfo > .SRCINFO
+          fi
+        shell: bash
+
+      - id: commit_and_push
+        name: Commit and Push to AUR
+        run: |
+          cd aur-repo
+          git config user.name "Illyrius"
+          git config user.email "28700752+illyrius666@users.noreply.github.com"
+
+          if git diff --exit-code; then
+            echo "No changes to push"
+            exit 0
+          fi
+
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          git add PKGBUILD .SRCINFO
+          git commit -m "Update to ${VERSION}"
+          git push origin master
+        shell: bash
