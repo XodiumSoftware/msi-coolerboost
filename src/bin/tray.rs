@@ -109,4 +109,7 @@ fn main() {
     let enabled = msi_coolerboost::check_status();
     let service = TrayService::new(TrayState { enabled });
     service.spawn();
+
+    // Keep the main thread alive for the spawned tray service
+    std::thread::park();
 }
