@@ -7,10 +7,17 @@ use std::process::Command;
 pub const STATE_FILE: &str = "/tmp/isw_coolerboost";
 pub const BINDINGS_FILE: &str = ".config/hypr/bindings.conf";
 
+/// Checks whether CoolerBoost is currently enabled.
+///
+/// This is determined by the presence of a state file.
 pub fn check_status() -> bool {
     PathBuf::from(STATE_FILE).exists()
 }
 
+/// Retrieves the currently configured CoolerBoost shortcut from Hyprland bindings.
+///
+/// Returns a formatted string like "SUPER + F10".
+/// Falls back to "Unknown" if parsing fails.
 pub fn get_current_shortcut() -> String {
     let home = std::env::var("HOME").unwrap_or_default();
     let bindings_path = PathBuf::from(home).join(BINDINGS_FILE);
@@ -24,6 +31,14 @@ pub fn get_current_shortcut() -> String {
     "Unknown".to_string()
 }
 
+/// Updates the CoolerBoost keybinding in Hyprland config.
+///
+/// # Arguments
+/// * `modifiers` - Modifier keys (e.g. "SUPER")
+/// * `key` - Key to bind (e.g. "F10")
+///
+/// # Errors
+/// Returns an error if the config file cannot be read or written.
 pub fn set_shortcut(modifiers: &str, key: &str) -> Result<(), Box<dyn std::error::Error>> {
     let home = std::env::var("HOME")?;
     let bindings_path = PathBuf::from(home).join(BINDINGS_FILE);
