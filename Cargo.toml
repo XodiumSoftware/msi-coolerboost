@@ -1,28 +1,19 @@
 [package]
-name = "streamocracy"
-version = "0.1.0"
-edition = "2024"
-authors = ["Xodium"]
-description = "A simple Discord bot with a single purpose"
-
-[[bin]]
-name = "streamocracy"
-path = "src/main.rs"
+name = "msi-coolerboost"
+version = "1.0.0"
+edition = "2021"
 
 [dependencies]
-serenity = { version = "0.12", default-features = false, features = ["client", "gateway", "rustls_backend", "model", "cache"] }
-tokio = { version = "1.52", features = ["macros", "rt-multi-thread"] }
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-anyhow = "1.0"
-dotenvy = "0.15"
+tray-icon = "0.19"
+winit = "0.30"
+notify-rust = "4"
+regex = "1"
+image = "0.25"
+gtk = { version = "0.18", optional = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+gtk = "0.18"
 
 [profile.release]
+opt-level = 3
 lto = true
-strip = true
-
-[lints.rust]
-unsafe_code = "forbid"
-
-[lints.clippy]
-all = "warn"

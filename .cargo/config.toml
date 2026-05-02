@@ -1,2 +1,20 @@
-[target.x86_64-pc-windows-msvc]
-linker = "rust-lld.exe"
+[build]
+target-dir = "target"
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true
+
+[registries.crates-io]
+protocol = "sparse"
+
+[alias]
+t = "test"
+tr = "run --bin tray"
+to = "run --bin toggle"
+b = "build"
+br = "build --release"
+c = "check"
+f = "fmt"
+cl = "clippy"

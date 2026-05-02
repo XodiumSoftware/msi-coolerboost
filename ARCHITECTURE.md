@@ -4,177 +4,135 @@ This file provides guidance when working with code in this repository.
 
 ## Project Overview
 
-Streamocracy is a Discord bot built with Rust and the Serenity framework. It provides votekick functionality for voice channels, allowing users to vote on kicking someone who is screensharing.
+MSI CoolerBoost is a Rust system tray application for controlling MSI laptop fan boost via `isw`. It provides a visual indicator of fan status and allows quick toggling through the system tray or keyboard shortcuts.
 
 ## Build & Run Commands
 
 ```bash
-# Build the bot (debug)
+# Build (debug)
 cargo build
 
-# Build the bot (release, with LTO + strip)
+# Build (release, with LTO + strip)
 cargo build --release
 
-# First run - creates a default config.toml
-# Edit config.toml and set your discord_token
-cargo run
+# Run system tray
+cargo run --bin tray
 
-# Subsequent runs
-cargo run
+# Run toggle (CLI)
+cargo run --bin toggle
 ```
 
 ## Architecture
 
-### Entry Point
+### Binaries
 
-- **`main.rs`** — contains the main function and bot implementation.
-    - Loads configuration from `config.toml`
-    - Sets up logging with configured log level
-    - Creates a Serenity `Client` with the `Bot` event handler
-    - Starts the async runtime and connects to Discord
+The project produces two binaries from the same codebase:
 
-### Configuration
+- **`msi-coolerboost`** (`src/bin/tray.rs`) — System tray GUI application
+- **`msi-coolerboost-toggle`** (`src/bin/toggle.rs`) — CLI toggle command (symlink)
 
-- **`config.rs`** — configuration management module.
-    - Loads settings from `config.toml` in the executable directory
-    - Creates a default config file if one doesn't exist
-    - Validates required settings (discord_token)
-    - Handles log level initialization
+### Entry Points
 
-**Example `config.toml`:**
+#### Tray Binary (`src/bin/tray.rs`)
 
-```toml
-# Discord bot token (required)
-discord_token = "your_token_here"
+The system tray application:
+- Creates a system tray icon using `tray-icon` crate
+- Shows current CoolerBoost status (green=ON, gray=OFF)
+- Provides context menu with toggle, status, and quit options
+- Handles menu events to toggle state or quit
 
-# Optional guild ID for instant command registration during testing
-guild_id = null
+#### Toggle Binary (`src/bin/toggle.rs`)
 
-# Log level filter (error, warn, info, debug, trace)
-log_level = "info"
+Simple CLI wrapper:
+- Calls `msi_coolerboost::toggle()` from the library
+- Exits immediately after toggling
+- Designed for keyboard shortcuts and scripts
 
-# Votekick duration settings (in seconds)
-default_votekick_duration = 60
-min_votekick_duration = 10
-max_votekick_duration = 300
+### Library (`src/lib.rs`)
 
-# How long to display results before auto-deleting (seconds)
-results_delete_delay = 10
-```
+Shared functionality between binaries:
 
-### Event Handler
-
-**`Bot`** — implements `EventHandler` from `serenity`:
-
-- `ready()` — logs when the bot successfully connects and registers slash commands
-- `interaction_create()` — handles slash command interactions
-
-### Commands
-
-The bot uses Discord slash commands:
-
-| Command     | Arguments                           | Description                                               |
-|-------------|-------------------------------------|-----------------------------------------------------------|
-| `/ping`     | None                                | Responds with `Pong! 🏓` to verify bot is responsive      |
-| `/votekick` | `user` (required), `duration` (opt) | Start a votekick poll against a user who is screensharing |
-| `/vk`       | `user` (required), `duration` (opt) | Alias for `/votekick`                                     |
+| Function | Purpose |
+|----------|---------|
+| `check_status()` | Check if CoolerBoost is enabled via state file |
+| `toggle()` | Toggle CoolerBoost via `isw` command, show notification |
+| `get_current_shortcut()` | Parse current keyboard shortcut from Hyprland config |
+| `set_shortcut()` | Update Hyprland config with new shortcut |
+| `show_notification()` | Display desktop notification via `notify-rust` |
+| `create_icon_rgba()` | Generate status icon (green/gray circle) |
 
 ### Project Structure
 
 ```
 src/
-├── main.rs              # Main entry point, bot event handler
-├── config.rs            # Configuration management (TOML file)
-├── utils.rs             # Utility functions for command registration and responses
-├── commands/
-│   ├── mod.rs           # SlashCommand trait definition and command registry
-│   ├── ping.rs          # Ping command implementation
-│   └── votekick.rs      # Votekick command handler (validates and starts poll)
-└── polls/
-    ├── mod.rs           # Poll trait and shared poll infrastructure
-    └── votekick.rs      # VotekickPoll struct implementing Poll trait
+├── lib.rs              # Shared library functions
+└── bin/
+    ├── tray.rs         # System tray GUI application
+    └── toggle.rs       # CLI toggle command
 ```
 
-### Votekick Flow
+## Dependencies
 
-1. User runs `/votekick @user` or `/vk @user`
-2. `commands::votekick::VotekickCommand::run()` validates:
-    - Command is used in a guild (not DM)
-    - Invoker is in a voice channel
-    - Target user is in the same voice channel
-    - Target user is currently screensharing
-3. `polls::votekick::VotekickPoll::start()` (via `Poll` trait):
-    - Creates embed with votekick details
-    - Adds ✅ and ❌ reactions for voting
-    - Schedules completion via `polls::schedule_poll_completion()`
-4. `polls::votekick::VotekickPoll::on_complete()` (via `Poll` trait):
-    - Deletes the poll message
-    - Counts reactions (excluding the bot)
-    - Requires minimum 2 yes votes and majority to pass
-    - Disconnects user from voice channel if passed
-    - Sends temporary results message (auto-deletes after configured delay)
-
-### Poll System
-
-The bot uses a generic `Poll` trait for reaction-based voting:
-
-- **`polls::Poll`** — trait defining poll lifecycle:
-    - `title()` / `description()` — embed content
-    - `duration()` — poll duration in seconds
-    - `start()` — sends embed and schedules completion
-    - `on_complete()` — called when poll ends with vote counts
-
-- **`polls::VotekickPoll`** — struct implementing `Poll` for votekick functionality:
-    - Stores target user, guild, channel metadata
-    - Implements votekick-specific completion logic (disconnecting users)
-
-### Dependencies
-
-| Crate                | Purpose                          |
-|----------------------|----------------------------------|
-| `serenity`           | Discord API client and framework |
-| `tokio`              | Async runtime                    |
-| `tracing`            | Logging and diagnostics          |
-| `tracing-subscriber` | Log formatting and output        |
-| `toml`               | TOML configuration file parsing  |
-| `serde`              | Serialization/deserialization    |
-| `anyhow`             | Error handling                   |
+| Crate | Purpose |
+|-------|---------|
+| `tray-icon` | System tray icon and menu |
+| `winit` | Event loop and windowing |
+| `notify-rust` | Desktop notifications |
+| `regex` | Parsing Hyprland config |
+| `image` | Generating status icons |
 
 ### Key Conventions
 
-- `unsafe_code` is forbidden project-wide (`[lints.rust] unsafe_code = "forbid"`).
-- All Clippy warnings are enabled (`[lints.clippy] all = "warn"`).
-- The release profile enables LTO and strips symbols for minimal binary size.
-- Configuration is loaded from `config.toml` in the executable directory (or path specified by `STREAMOCRACY_CONFIG` env var).
-- The bot creates a default config file on first run if one doesn't exist.
+- No unsafe code (`#![forbid(unsafe_code)]`)
+- All Clippy warnings enabled
+- Release profile enables LTO and strips symbols
+- State stored in `/tmp/isw_coolerboost` (tmpfs, cleared on reboot)
 
-## Docker
+## Hyprland Integration
 
-The bot can be run in a Docker container:
+### Keyboard Shortcuts
 
-```bash
-# Build the image
-docker build -t streamocracy .
+The library reads/writes `~/.config/hypr/bindings.conf`:
 
-# Run with config mounted
-docker run -v $(pwd)/config.toml:/app/config/config.toml:ro streamocracy
-
-# Or use docker-compose
-docker-compose up -d
+```conf
+# CoolerBoost Fan Toggle
+bindd = SUPER CTRL, F, Toggle CoolerBoost, exec, msi-coolerboost-toggle
 ```
 
-### Environment Variables
+### Autostart
 
-| Variable | Description |
-|----------|-------------|
-| `STREAMOCRACY_CONFIG` | Path to config file (default: `/app/config/config.toml`) |
-| `RUST_LOG` | Log level filter (default: `info`) |
+Add to `~/.config/hypr/autostart.conf`:
 
-### GitHub Container Registry
-
-The image is automatically published to GHCR on every push to main (nightly builds):
-
-```bash
-# Pull nightly
-docker pull ghcr.io/illyrius666/streamocracy:nightly
+```conf
+exec-once = uwsm-app -- msi-coolerboost tray
 ```
+
+## Icon Generation
+
+Status icons are generated programmatically:
+- Size: 64x64 pixels
+- ON: Green circle (#4CAF50)
+- OFF: Gray circle (#757575)
+- Anti-aliased edge with alpha gradient
+
+## State Management
+
+CoolerBoost state is tracked via a file:
+- Path: `/tmp/isw_coolerboost`
+- Created when ON, removed when OFF
+- Mirrors `isw` internal state
+
+## Notifications
+
+Desktop notifications shown on toggle:
+- Title: "CoolerBoost ON/OFF"
+- Body: "Fan boost enabled/disabled"
+- Duration: 2 seconds
+- Uses `notify-rust` crate
+
+## Requirements
+
+- `isw` installed and configured for your MSI laptop
+- Sudo access for `isw -b on/off` commands
+- Hyprland (for keyboard shortcuts)
+- System tray support (status bar/panel)
