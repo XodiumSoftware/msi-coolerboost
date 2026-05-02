@@ -1,8 +1,8 @@
+use notify_rust::Notification;
+use regex::Regex;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
-use regex::Regex;
-use notify_rust::Notification;
 
 pub const STATE_FILE: &str = "/tmp/isw_coolerboost";
 pub const BINDINGS_FILE: &str = ".config/hypr/bindings.conf";
@@ -31,7 +31,8 @@ pub fn set_shortcut(modifiers: &str, key: &str) -> Result<(), Box<dyn std::error
 
     let new_line = format!(
         "bindd = {}, {}, Toggle CoolerBoost, exec, msi-coolerboost toggle",
-        modifiers, key.to_uppercase()
+        modifiers,
+        key.to_uppercase()
     );
 
     let re = Regex::new(r"(# CoolerBoost Fan Toggle\n)bindd\s*=\s*.+?\n").unwrap();
@@ -49,16 +50,12 @@ pub fn set_shortcut(modifiers: &str, key: &str) -> Result<(), Box<dyn std::error
 
 pub fn toggle() -> bool {
     if check_status() {
-        let _ = Command::new("sudo")
-            .args(&["isw", "-b", "off"])
-            .output();
+        let _ = Command::new("sudo").args(["isw", "-b", "off"]).output();
         let _ = fs::remove_file(STATE_FILE);
         show_notification("CoolerBoost OFF", "Fan boost disabled");
         false
     } else {
-        let _ = Command::new("sudo")
-            .args(&["isw", "-b", "on"])
-            .output();
+        let _ = Command::new("sudo").args(["isw", "-b", "on"]).output();
         let _ = fs::File::create(STATE_FILE);
         show_notification("CoolerBoost ON", "Fan boost enabled");
         true
@@ -77,9 +74,9 @@ pub fn create_icon_rgba(enabled: bool, size: u32) -> Vec<u8> {
     use image::{ImageBuffer, Rgba};
 
     let (r, g, b) = if enabled {
-        (76, 175, 80)  // Green
+        (76, 175, 80) // Green
     } else {
-        (117, 117, 117)  // Gray
+        (117, 117, 117) // Gray
     };
 
     let mut img = ImageBuffer::new(size, size);
