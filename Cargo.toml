@@ -4,7 +4,7 @@ version = "1.0.0"
 edition = "2021"
 
 [dependencies]
-ksni = "0.3"
+ksni = { version = "0.3", features = ["blocking"] }
 notify-rust = "4"
 regex = "1"
 image = "0.25"

@@ -1,4 +1,4 @@
-use ksni::{self, menu::StandardItem, MenuItem, ToolTip, TrayService};
+use ksni::{self, blocking::TrayMethods, menu::StandardItem, MenuItem, ToolTip};
 
 /// Represents the current tray state for MSI CoolerBoost.
 #[derive(Debug)]
@@ -19,6 +19,11 @@ impl ksni::Tray for TrayState {
         "MSI CoolerBoost".into()
     }
 
+    fn activate(&mut self, _x: i32, _y: i32) {
+        msi_coolerboost::toggle();
+        self.enabled = msi_coolerboost::check_status();
+    }
+
     fn icon_pixmap(&self) -> Vec<ksni::Icon> {
         vec![self.create_icon()]
     }
@@ -33,33 +38,11 @@ impl ksni::Tray for TrayState {
     }
 
     fn menu(&self) -> Vec<MenuItem<Self>> {
-        let status = if self.enabled { "ON" } else { "OFF" };
         let shortcut = msi_coolerboost::get_current_shortcut();
 
         vec![
             MenuItem::Standard(StandardItem {
-                label: "Toggle CoolerBoost".into(),
-                enabled: true,
-                activate: Box::new(|this: &mut Self| {
-                    msi_coolerboost::toggle();
-                    this.enabled = msi_coolerboost::check_status();
-                }),
-                ..Default::default()
-            }),
-            MenuItem::Sepatator,
-            MenuItem::Standard(StandardItem {
-                label: format!("Status: {}", status),
-                enabled: false,
-                ..Default::default()
-            }),
-            MenuItem::Standard(StandardItem {
                 label: format!("Shortcut: {}", shortcut),
-                enabled: false,
-                ..Default::default()
-            }),
-            MenuItem::Sepatator,
-            MenuItem::Standard(StandardItem {
-                label: "Change Shortcut...".into(),
                 enabled: true,
                 activate: Box::new(|_: &mut Self| {
                     msi_coolerboost::show_notification(
@@ -69,7 +52,7 @@ impl ksni::Tray for TrayState {
                 }),
                 ..Default::default()
             }),
-            MenuItem::Sepatator,
+            MenuItem::Separator,
             MenuItem::Standard(StandardItem {
                 label: "Quit".into(),
                 enabled: true,
@@ -107,9 +90,6 @@ impl TrayState {
 /// and starts the tray service event loop.
 fn main() {
     let enabled = msi_coolerboost::check_status();
-    let service = TrayService::new(TrayState { enabled });
-    service.spawn();
-
-    // Keep the main thread alive for the spawned tray service
+    TrayState { enabled }.spawn().expect("failed to spawn tray");
     std::thread::park();
 }

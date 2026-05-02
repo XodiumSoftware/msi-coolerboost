@@ -78,11 +78,15 @@ pub fn toggle() -> bool {
 }
 
 pub fn show_notification(title: &str, body: &str) {
-    let _ = Notification::new()
-        .summary(title)
-        .body(body)
-        .timeout(std::time::Duration::from_secs(2))
-        .show();
+    let title = title.to_string();
+    let body = body.to_string();
+    std::thread::spawn(move || {
+        let _ = Notification::new()
+            .summary(&title)
+            .body(&body)
+            .timeout(std::time::Duration::from_secs(2))
+            .show();
+    });
 }
 
 pub fn create_icon_rgba(enabled: bool, size: u32) -> Vec<u8> {
