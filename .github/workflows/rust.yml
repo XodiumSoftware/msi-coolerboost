@@ -239,12 +239,6 @@ jobs:
     name: Publish to AUR
     if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    steps:
-
-  aur-publish:
-    name: Publish to AUR
-    if: github.event_name == "release" || github.event_name == "workflow_dispatch"
-    runs-on: ubuntu-latest
     environment:
       name: aur
     steps:
@@ -270,7 +264,7 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > ~/.ssh/aur_key
           chmod 600 ~/.ssh/aur_key
-          cat >> ~/.ssh/config << SSHEOF
+          cat >> ~/.ssh/config << 'SSHEOF'
           Host aur.archlinux.org
             HostName aur.archlinux.org
             User aur
@@ -292,7 +286,7 @@ jobs:
           VERSION="${{ steps.get_version.outputs.VERSION }}"
           URL="https://github.com/XodiumSoftware/msi-coolerboost/archive/refs/tags/v${VERSION}.tar.gz"
           curl -sL "$URL" -o source.tar.gz
-          SHA256=$(sha256sum source.tar.gz | cut -d" " -f1)
+          SHA256=$(sha256sum source.tar.gz | cut -d' ' -f1)
           echo "SHA256=$SHA256" >> $GITHUB_OUTPUT
           rm source.tar.gz
         shell: bash
