@@ -22,7 +22,6 @@
 
 ## Table of Contents
 
-- [Architecture](ARCHITECTURE.md)
 - [Guide](GUIDE.md)
 - [Features](#features)
 - [Built With](#built-with)

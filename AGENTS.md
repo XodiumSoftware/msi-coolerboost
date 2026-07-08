@@ -88,7 +88,6 @@ exec-once = uwsm-app -- msi-coolerboost tray
 
 - **Public APIs** — Document with `///`
 - **Binaries** — Explain purpose in module docs
-- **Update ARCHITECTURE.md** when adding features
 
 ## Claude Code Workflow
 
@@ -99,9 +98,8 @@ exec-once = uwsm-app -- msi-coolerboost tray
 
 ### After Making Edits
 
-1. **ARCHITECTURE.md** — Update if structure changes
-2. **README.md** — Update if usage/installation changes
-3. **AI.md** — Update if new tools/APIs added
+1. **README.md** — Update if usage/installation changes
+2. **AGENTS.md** — Update if new tools/APIs added
 
 ## CI/CD
 
