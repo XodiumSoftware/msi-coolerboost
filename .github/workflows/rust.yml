@@ -2,9 +2,9 @@ name: Xodium CI/CD
 
 on:
   push:
-    branches: [main, master]
+    branches: [main]
   pull_request:
-    branches: [main, master]
+    branches: [main]
   release:
     types: [published]
   workflow_dispatch:
@@ -189,6 +189,7 @@ jobs:
   docs:
     name: Documentation
     needs: [lint, build]
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
