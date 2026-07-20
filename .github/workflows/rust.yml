@@ -33,7 +33,7 @@ jobs:
     steps:
       - id: checkout
         name: Checkout
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
       - id: install_deps
         name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libglib2.0-dev pkg-config
@@ -68,7 +68,7 @@ jobs:
     steps:
       - id: checkout
         name: Checkout
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
       - id: install_deps
         name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libglib2.0-dev pkg-config
@@ -136,7 +136,7 @@ jobs:
     steps:
       - id: checkout
         name: Checkout
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
       - id: install_deps
         name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libglib2.0-dev pkg-config
@@ -200,7 +200,7 @@ jobs:
     steps:
       - id: checkout
         name: Checkout
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
       - id: install_deps
         name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libglib2.0-dev pkg-config
@@ -245,7 +245,7 @@ jobs:
     steps:
       - id: checkout
         name: Checkout
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
 
       - id: get_version
         name: Get Version
