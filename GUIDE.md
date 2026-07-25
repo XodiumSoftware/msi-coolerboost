@@ -44,7 +44,7 @@ echo 'illyrius ALL=(ALL) NOPASSWD: /usr/bin/isw -b on, /usr/bin/isw -b off' | su
 git clone https://github.com/XodiumSoftware/msi-coolerboost.git
 cd msi-coolerboost
 
-# Build release binaries
+# Build release binary
 cargo build --release
 ```
 
@@ -55,10 +55,9 @@ cargo build --release
 ### Manual Installation
 
 ```bash
-# Copy binaries
+# Copy binary
 cargo build --release
-sudo cp target/release/tray /usr/local/bin/msi-coolerboost
-sudo ln -sf msi-coolerboost /usr/local/bin/msi-coolerboost-toggle
+sudo cp target/release/msi-coolerboost /usr/local/bin/
 
 # Copy desktop entry
 sudo cp msi-coolerboost.desktop /usr/local/share/applications/
@@ -80,7 +79,7 @@ Add to `~/.config/hypr/bindings.conf`:
 
 ```conf
 # CoolerBoost Fan Toggle
-bindd = SUPER CTRL, F, Toggle CoolerBoost, exec, msi-coolerboost-toggle
+bindd = SUPER CTRL, F, Toggle CoolerBoost, exec, msi-coolerboost toggle
 ```
 
 ### Autostart
@@ -123,7 +122,9 @@ Press `Super + Ctrl + F` to toggle CoolerBoost instantly.
 
 ```bash
 # Toggle via CLI
-msi-coolerboost-toggle
+msi-coolerboost toggle
+# or simply:
+msi-coolerboost
 
 # Check current status
 ls /tmp/isw_coolerboost 2>/dev/null && echo "ON" || echo "OFF"

@@ -5,6 +5,9 @@
 //! includes helpers for parsing and updating the Hyprland keybinding as well
 //! as generating a status icon and desktop notifications.
 
+pub mod toggle_mode;
+pub mod tray_mode;
+
 use dirs::config_dir;
 use notify_rust::Notification;
 use std::fs;
@@ -271,7 +274,7 @@ mod tests {
     #[test]
     fn get_current_shortcut_parses_binding() {
         let _guard = ENV_LOCK.lock().unwrap();
-        let (dir, _) = temp_config("# CoolerBoost Fan Toggle\nbindd = SUPER CTRL, F, Toggle CoolerBoost, exec, msi-coolerboost-toggle\n");
+        let (dir, _) = temp_config("# CoolerBoost Fan Toggle\nbindd = SUPER CTRL, F, Toggle CoolerBoost, exec, msi-coolerboost toggle\n");
         std::env::set_var("XDG_CONFIG_HOME", &dir);
         assert_eq!(get_current_shortcut(), "SUPER CTRL + F");
     }
@@ -280,7 +283,7 @@ mod tests {
     fn get_current_shortcut_skips_blank_and_comment_lines() {
         let _guard = ENV_LOCK.lock().unwrap();
         let (dir, _) = temp_config(
-            "# CoolerBoost Fan Toggle\n\n# another comment\nbindd = SUPER SHIFT, F10, Toggle CoolerBoost, exec, msi-coolerboost-toggle\n",
+            "# CoolerBoost Fan Toggle\n\n# another comment\nbindd = SUPER SHIFT, F10, Toggle CoolerBoost, exec, msi-coolerboost toggle\n",
         );
         std::env::set_var("XDG_CONFIG_HOME", &dir);
         assert_eq!(get_current_shortcut(), "SUPER SHIFT + F10");
@@ -298,7 +301,7 @@ mod tests {
     #[test]
     fn set_shortcut_updates_binding() {
         let _guard = ENV_LOCK.lock().unwrap();
-        let (dir, path) = temp_config("# CoolerBoost Fan Toggle\nbindd = SUPER CTRL, F, Toggle CoolerBoost, exec, msi-coolerboost-toggle\n");
+        let (dir, path) = temp_config("# CoolerBoost Fan Toggle\nbindd = SUPER CTRL, F, Toggle CoolerBoost, exec, msi-coolerboost toggle\n");
         std::env::set_var("XDG_CONFIG_HOME", &dir);
         set_shortcut("SUPER SHIFT", "F10").unwrap();
         let content = std::fs::read_to_string(path).unwrap();
@@ -311,7 +314,7 @@ mod tests {
     fn set_shortcut_skips_blank_and_comment_lines() {
         let _guard = ENV_LOCK.lock().unwrap();
         let (dir, path) = temp_config(
-            "# CoolerBoost Fan Toggle\n\n# comment\nbindd = SUPER CTRL, F, Toggle CoolerBoost, exec, msi-coolerboost-toggle\n",
+            "# CoolerBoost Fan Toggle\n\n# comment\nbindd = SUPER CTRL, F, Toggle CoolerBoost, exec, msi-coolerboost toggle\n",
         );
         std::env::set_var("XDG_CONFIG_HOME", &dir);
         set_shortcut("ALT", "X").unwrap();

@@ -1,8 +1,6 @@
-//! System tray application for MSI `CoolerBoost`.
+//! Tray mode for MSI `CoolerBoost`.
 //!
-//! Registers a tray icon that reflects the current `CoolerBoost` state. Clicking
-//! the icon toggles the state, and the right-click menu displays the current
-//! Hyprland shortcut plus a quit option.
+//! Provides the system tray GUI for the unified `msi-coolerboost` application.
 
 use ksni::{self, blocking::TrayMethods, menu::StandardItem, MenuItem, ToolTip};
 
@@ -29,7 +27,7 @@ impl ksni::Tray for TrayState {
     /// Called when the user clicks the tray icon. Toggles `CoolerBoost` and
     /// refreshes the cached state.
     fn activate(&mut self, _x: i32, _y: i32) {
-        self.enabled = msi_coolerboost::toggle();
+        self.enabled = crate::toggle();
     }
 
     /// Returns the icon shown in the system tray.
@@ -49,14 +47,14 @@ impl ksni::Tray for TrayState {
 
     /// Builds the tray context menu.
     fn menu(&self) -> Vec<MenuItem<Self>> {
-        let shortcut = msi_coolerboost::get_current_shortcut();
+        let shortcut = crate::get_current_shortcut();
 
         vec![
             MenuItem::Standard(StandardItem {
                 label: format!("Shortcut: {shortcut}"),
                 enabled: true,
                 activate: Box::new(|_: &mut Self| {
-                    msi_coolerboost::show_notification(
+                    crate::show_notification(
                         "Shortcut Change",
                         "Edit ~/.config/hypr/bindings.conf",
                     );
@@ -79,11 +77,11 @@ impl ksni::Tray for TrayState {
 impl TrayState {
     /// Creates a system tray icon from the current state.
     ///
-    /// Converts RGBA pixel data from [`create_icon_rgba`](msi_coolerboost::create_icon_rgba)
+    /// Converts RGBA pixel data from [`create_icon_rgba`](crate::create_icon_rgba)
     /// into ARGB format required by the system tray, with the alpha channel in
     /// the first byte.
     fn create_icon(&self) -> ksni::Icon {
-        let rgba = msi_coolerboost::create_icon_rgba(self.enabled, 64);
+        let rgba = crate::create_icon_rgba(self.enabled, 64);
         let data: Vec<u8> = rgba
             .chunks(4)
             .flat_map(|c| [c[3], c[0], c[1], c[2]])
@@ -96,13 +94,16 @@ impl TrayState {
     }
 }
 
-/// Entry point for the MSI `CoolerBoost` system tray application.
+/// Runs the system tray event loop.
 ///
 /// Initializes the tray state from the current `CoolerBoost` status and starts
-/// the tray service event loop. The main thread parks indefinitely so the tray
-/// icon remains active until the user quits.
-fn main() {
-    let enabled = msi_coolerboost::check_status();
+/// the tray service. The thread parks indefinitely so the icon remains active
+/// until the user quits.
+///
+/// # Panics
+/// Panics if the tray service fails to spawn.
+pub fn run_tray() {
+    let enabled = crate::check_status();
     TrayState { enabled }.spawn().expect("failed to spawn tray");
     std::thread::park();
 }

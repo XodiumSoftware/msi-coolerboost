@@ -7,7 +7,7 @@
 - **Language:** Rust
 - **Build Tool:** Cargo
 - **GUI Framework:** ksni
-- **Output:** Two binaries (`msi-coolerboost` tray GUI + `msi-coolerboost-toggle` CLI toggle)
+- **Output:** One binary (`msi-coolerboost`) with `tray` and `toggle` subcommands
 
 ## APIs & Tools
 
@@ -20,25 +20,27 @@
 ## Quick Commands
 
 ```bash
-# Build (debug)
+: Build (debug)
 cargo build
 
-# Build (release)
+: Build (release)
 cargo build --release
 
-# Run system tray
-cargo run --bin msi-coolerboost
+: Run system tray
+cargo run -- tray
 
-# Run toggle (CLI)
-cargo run --bin msi-coolerboost-toggle
+: Run toggle (CLI)
+cargo run -- toggle
+: or simply:
+cargo run
 ```
 
 ## Architecture Overview
 
 ### Binaries
 
-- **`msi-coolerboost tray`** (`src/bin/tray.rs`) — System tray GUI
-- **`msi-coolerboost-toggle`** (`src/bin/toggle.rs`) — CLI toggle command
+- **`msi-coolerboost tray`** (`src/tray_mode.rs`) — System tray GUI
+- **`msi-coolerboost toggle`** (`src/toggle_mode.rs` and `src/main.rs`) — CLI toggle command
 
 ### Library (`src/lib.rs`)
 
@@ -67,7 +69,7 @@ Core functionality shared between binaries:
 
 **Keyboard shortcut (bindings.conf):**
 ```conf
-bindd = SUPER CTRL, F, Toggle CoolerBoost, exec, msi-coolerboost-toggle
+bindd = SUPER CTRL, F, Toggle CoolerBoost, exec, msi-coolerboost toggle
 ```
 
 **Autostart (autostart.conf):**
@@ -107,10 +109,10 @@ Implemented via `.github/workflows/rust.yml`:
 |-----|---------|---------|
 | **Lint** | PR / push | `cargo clippy` + `cargo fmt` |
 | **Test** | PR / push | `cargo test` |
-| **Build** | PR / push / release | Release binaries for `msi-coolerboost` and `msi-coolerboost-toggle` |
+| **Build** | PR / push / release | Release binary `msi-coolerboost` |
 | **Nightly Release** | Push to `main` | Updates `nightly` tag with latest binaries |
 | **Stable Release** | Release published | Attaches binaries to the GitHub release |
 | **Docs** | Push to `main` | Builds and deploys rustdoc to GitHub Pages |
 | **AUR Publish** | Release / manual | Updates AUR `PKGBUILD` and `.SRCINFO` |
 
-Builds use `sccache` with the GitHub Actions cache backend. Release binaries already match the package names in `PKGBUILD` (`msi-coolerboost` and `msi-coolerboost-toggle`).
+Builds use `sccache` with the GitHub Actions cache backend. The release binary name matches the package name in `PKGBUILD` (`msi-coolerboost`).
