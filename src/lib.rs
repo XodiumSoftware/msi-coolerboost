@@ -224,3 +224,61 @@ pub fn create_icon_rgba(enabled: bool, size: u32) -> Vec<u8> {
 
     img.into_raw()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Mutex;
+
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    fn temp_config(content: &str) -> (PathBuf, PathBuf) {
+        let dir = std::env::temp_dir().join(format!(
+            "msi-coolerboost-tests-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let path = dir.join("hypr/bindings.conf");
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, content).unwrap();
+        (dir, path)
+    }
+
+    #[test]
+    fn get_current_shortcut_parses_binding() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let (dir, _) = temp_config("# CoolerBoost Fan Toggle\nbindd = SUPER CTRL, F, Toggle CoolerBoost, exec, msi-coolerboost-toggle\n");
+        std::env::set_var("XDG_CONFIG_HOME", &dir);
+        assert_eq!(get_current_shortcut(), "SUPER CTRL + F");
+    }
+
+    #[test]
+    fn get_current_shortcut_returns_unknown_when_missing() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let (dir, _) =
+            temp_config("# Some other binding\nbindd = SUPER, A, Something, exec, foo\n");
+        std::env::set_var("XDG_CONFIG_HOME", &dir);
+        assert_eq!(get_current_shortcut(), "Unknown");
+    }
+
+    #[test]
+    fn set_shortcut_updates_binding() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let (dir, path) = temp_config("# CoolerBoost Fan Toggle\nbindd = SUPER CTRL, F, Toggle CoolerBoost, exec, msi-coolerboost-toggle\n");
+        std::env::set_var("XDG_CONFIG_HOME", &dir);
+        set_shortcut("SUPER SHIFT", "F10").unwrap();
+        let content = std::fs::read_to_string(path).unwrap();
+        assert!(content.contains(
+            "bindd = SUPER SHIFT, F10, Toggle CoolerBoost, exec, msi-coolerboost toggle",
+        ));
+    }
+
+    #[test]
+    fn create_icon_rgba_produces_expected_size() {
+        let data = create_icon_rgba(true, 64);
+        assert_eq!(data.len(), 64 * 64 * 4);
+    }
+}
