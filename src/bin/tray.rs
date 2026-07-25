@@ -1,15 +1,15 @@
-//! System tray application for MSI CoolerBoost.
+//! System tray application for MSI `CoolerBoost`.
 //!
-//! Registers a tray icon that reflects the current CoolerBoost state. Clicking
+//! Registers a tray icon that reflects the current `CoolerBoost` state. Clicking
 //! the icon toggles the state, and the right-click menu displays the current
 //! Hyprland shortcut plus a quit option.
 
 use ksni::{self, blocking::TrayMethods, menu::StandardItem, MenuItem, ToolTip};
 
-/// Represents the current tray state for MSI CoolerBoost.
+/// Represents the current tray state for MSI `CoolerBoost`.
 #[derive(Debug)]
 struct TrayState {
-    /// Whether CoolerBoost is currently enabled.
+    /// Whether `CoolerBoost` is currently enabled.
     enabled: bool,
 }
 
@@ -26,11 +26,10 @@ impl ksni::Tray for TrayState {
         "MSI CoolerBoost".into()
     }
 
-    /// Called when the user clicks the tray icon. Toggles CoolerBoost and
+    /// Called when the user clicks the tray icon. Toggles `CoolerBoost` and
     /// refreshes the cached state.
     fn activate(&mut self, _x: i32, _y: i32) {
-        msi_coolerboost::toggle();
-        self.enabled = msi_coolerboost::check_status();
+        self.enabled = msi_coolerboost::toggle();
     }
 
     /// Returns the icon shown in the system tray.
@@ -54,7 +53,7 @@ impl ksni::Tray for TrayState {
 
         vec![
             MenuItem::Standard(StandardItem {
-                label: format!("Shortcut: {}", shortcut),
+                label: format!("Shortcut: {shortcut}"),
                 enabled: true,
                 activate: Box::new(|_: &mut Self| {
                     msi_coolerboost::show_notification(
@@ -97,9 +96,9 @@ impl TrayState {
     }
 }
 
-/// Entry point for the MSI CoolerBoost system tray application.
+/// Entry point for the MSI `CoolerBoost` system tray application.
 ///
-/// Initializes the tray state from the current CoolerBoost status and starts
+/// Initializes the tray state from the current `CoolerBoost` status and starts
 /// the tray service event loop. The main thread parks indefinitely so the tray
 /// icon remains active until the user quits.
 fn main() {
