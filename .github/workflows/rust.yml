@@ -56,7 +56,7 @@ jobs:
       - id: run_lint
         name: Run Lint
         run: |
-          cargo clippy --all-targets --all-features --locked -- -D warnings
+          cargo clippy --all-targets --all-features --locked -- -D warnings -W clippy::pedantic
           cargo fmt --all -- --check
         shell: bash
 
