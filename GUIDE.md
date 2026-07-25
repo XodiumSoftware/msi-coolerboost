@@ -60,7 +60,12 @@ cargo build --release
 sudo cp target/release/msi-coolerboost /usr/local/bin/
 
 # Copy desktop entry
-sudo cp msi-coolerboost.desktop /usr/local/share/applications/
+if [ -d "/usr/local/share/applications" ]; then
+    sudo cp msi-coolerboost.desktop /usr/local/share/applications/
+else
+    mkdir -p "$HOME/.local/share/applications"
+    cp msi-coolerboost.desktop "$HOME/.local/share/applications/"
+fi
 ```
 
 ### Install Script
@@ -80,7 +85,7 @@ When run without `--systemd`, the script will ask whether to enable the systemd 
 If you skipped the install-script setup, you can install and enable the service manually:
 
 ```bash
-sudo tee /usr/lib/systemd/user/msi-coolerboost.service > /dev/null <> 'EOF'
+sudo tee /usr/lib/systemd/user/msi-coolerboost.service > /dev/null <<EOF
 [Unit]
 Description=MSI CoolerBoost system tray
 After=graphical-session.target

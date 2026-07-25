@@ -31,7 +31,12 @@ echo "Installing binary..."
 sudo cp target/release/msi-coolerboost /usr/local/bin/
 
 echo "Installing desktop entry..."
-sudo cp msi-coolerboost.desktop /usr/local/share/applications/ || mkdir -p ~/.local/share/applications && cp msi-coolerboost.desktop ~/.local/share/applications/
+if [ -d "/usr/local/share/applications" ]; then
+    sudo cp msi-coolerboost.desktop /usr/local/share/applications/
+else
+    mkdir -p "$HOME/.local/share/applications"
+    cp msi-coolerboost.desktop "$HOME/.local/share/applications/"
+fi
 
 echo "Updating Hyprland config..."
 if [ -f "$HOME/.config/hypr/bindings.conf" ]; then
@@ -41,7 +46,7 @@ fi
 install_systemd_service() {
     local service_path="/usr/lib/systemd/user/msi-coolerboost.service"
     echo "Installing systemd user service to ${service_path}..."
-    sudo tee "${service_path}" > /dev/null <> 'EOF'
+    sudo tee "${service_path}" > /dev/null <<EOF
 [Unit]
 Description=MSI CoolerBoost system tray
 After=graphical-session.target
