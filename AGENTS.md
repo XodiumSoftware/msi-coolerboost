@@ -15,9 +15,9 @@
 |----------|------------|---------|
 | **GUI** | tray-icon | System tray icon and menu |
 | **Windowing** | winit | Event loop and window management |
+| **Config Paths** | dirs | XDG directories |
 | **Notifications** | notify-rust | Desktop notifications |
 | **Image** | image | Icon generation (RGBA) |
-| **Config Parsing** | regex | Hyprland config parsing |
 
 ## Quick Commands
 

@@ -5,8 +5,8 @@
 //! includes helpers for parsing and updating the Hyprland keybinding as well
 //! as generating a status icon and desktop notifications.
 
+use dirs::config_dir;
 use notify_rust::Notification;
-use regex::Regex;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
@@ -17,8 +17,16 @@ use std::process::Command;
 /// on tmpfs so it is automatically cleared on reboot.
 pub const STATE_FILE: &str = "/tmp/isw_coolerboost";
 
-/// Path to the Hyprland bindings file, relative to the user's home directory.
-pub const BINDINGS_FILE: &str = ".config/hypr/bindings.conf";
+/// Relative path to the Hyprland bindings file inside the user's config directory.
+pub const BINDINGS_FILE: &str = "hypr/bindings.conf";
+
+/// Returns the path to the Hyprland bindings file.
+///
+/// Combines the user's XDG config directory with [`BINDINGS_FILE`].
+#[must_use]
+fn bindings_path() -> Option<PathBuf> {
+    config_dir().map(|dir| dir.join(BINDINGS_FILE))
+}
 
 /// Checks whether `CoolerBoost` is currently enabled.
 ///
@@ -39,19 +47,28 @@ pub fn check_status() -> bool {
 ///
 /// # Returns
 /// The parsed shortcut, or `"Unknown"` if parsing fails.
-///
-/// # Panics
-/// Panics if the internal regular expression fails to compile. The pattern is
-/// static and verified, so this should never happen in practice.
 #[must_use]
 pub fn get_current_shortcut() -> String {
-    let home = std::env::var("HOME").unwrap_or_default();
-    let bindings_path = PathBuf::from(home).join(BINDINGS_FILE);
+    let Some(content) = bindings_path().and_then(|path| fs::read_to_string(path).ok()) else {
+        return "Unknown".to_string();
+    };
 
-    if let Ok(content) = fs::read_to_string(&bindings_path) {
-        let re = Regex::new(r"# CoolerBoost.*\nbindd\s*=\s*(.+?),\s*(\w+),").unwrap();
-        if let Some(caps) = re.captures(&content) {
-            return format!("{} + {}", &caps[1], &caps[2]);
+    let mut lines = content.lines().peekable();
+    while let Some(line) = lines.next() {
+        if line.contains("CoolerBoost") {
+            if let Some(next) = lines.peek() {
+                let Some(bind) = next.strip_prefix("bindd = ") else {
+                    continue;
+                };
+                let parts: Vec<&str> = bind.split(',').collect();
+                if parts.len() >= 2 {
+                    let modifiers = parts[0].trim();
+                    let key = parts[1].trim();
+                    if !modifiers.is_empty() && !key.is_empty() {
+                        return format!("{modifiers} + {key}");
+                    }
+                }
+            }
         }
     }
     "Unknown".to_string()
@@ -68,29 +85,42 @@ pub fn get_current_shortcut() -> String {
 /// * `key` - Key to bind (e.g. `"F10"`). It will be uppercased automatically.
 ///
 /// # Errors
-/// Returns an error if the `HOME` environment variable is missing, the
-/// bindings file cannot be read, or the updated file cannot be written.
-///
-/// # Panics
-/// Panics if the internal regular expressions fail to compile. The patterns
-/// are static and verified, so this should never happen in practice.
+/// Returns an error if the config directory or bindings file cannot be
+/// determined/read/written.
 pub fn set_shortcut(modifiers: &str, key: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let home = std::env::var("HOME")?;
-    let bindings_path = PathBuf::from(home).join(BINDINGS_FILE);
-    let content = fs::read_to_string(&bindings_path)?;
+    let path = bindings_path().ok_or("unable to determine config directory")?;
+    let content = fs::read_to_string(&path)?;
 
     let new_line = format!(
-        "bindd = {}, {}, Toggle CoolerBoost, exec, msi-coolerboost toggle",
-        modifiers,
+        "bindd = {modifiers}, {}, Toggle CoolerBoost, exec, msi-coolerboost toggle",
         key.to_uppercase()
     );
 
-    let re = Regex::new(r"(# CoolerBoost Fan Toggle\n)bindd\s*=\s*.+?\n").unwrap();
-    let new_content = re.replace(&content, |caps: &regex::Captures| {
-        format!("{} {}\n", &caps[1], new_line)
-    });
+    let mut new_content = String::with_capacity(content.len() + new_line.len());
+    let mut lines = content.lines().peekable();
+    let mut replaced = false;
 
-    fs::write(&bindings_path, new_content.as_ref())?;
+    while let Some(line) = lines.next() {
+        new_content.push_str(line);
+        new_content.push('\n');
+
+        if !replaced && line.contains("# CoolerBoost") {
+            if let Some(next) = lines.peek() {
+                if next.starts_with("bindd = ") {
+                    lines.next(); // consume old bind line
+                    new_content.push_str(&new_line);
+                    new_content.push('\n');
+                    replaced = true;
+                }
+            }
+        }
+    }
+
+    if !replaced {
+        return Err("CoolerBoost binding block not found".into());
+    }
+
+    fs::write(&path, new_content)?;
 
     // Reload hyprland so the new shortcut takes effect immediately.
     let _ = Command::new("hyprctl").arg("reload").output();
@@ -108,13 +138,19 @@ pub fn set_shortcut(modifiers: &str, key: &str) -> Result<(), Box<dyn std::error
 /// The new state: `true` for ON, `false` for OFF.
 #[must_use]
 pub fn toggle() -> bool {
-    if check_status() {
-        let _ = Command::new("sudo").args(["isw", "-b", "off"]).output();
+    let (was_enabled, command) = if check_status() {
+        (true, ["isw", "-b", "off"])
+    } else {
+        (false, ["isw", "-b", "on"])
+    };
+
+    let _ = Command::new("sudo").args(command).output();
+
+    if was_enabled {
         let _ = fs::remove_file(STATE_FILE);
         show_notification("CoolerBoost OFF", "Fan boost disabled");
         false
     } else {
-        let _ = Command::new("sudo").args(["isw", "-b", "on"]).output();
         let _ = fs::File::create(STATE_FILE);
         show_notification("CoolerBoost ON", "Fan boost enabled");
         true
