@@ -103,6 +103,16 @@ exec-once = uwsm-app -- msi-coolerboost tray
 
 ## CI/CD
 
-No CI/CD currently. Consider:
-- GitHub Actions for builds on PR/push
-- Release workflow for publishing binaries
+Implemented via `.github/workflows/rust.yml`:
+
+| Job | Trigger | Purpose |
+|-----|---------|---------|
+| **Lint** | PR / push | `cargo clippy` + `cargo fmt` |
+| **Test** | PR / push | `cargo test` |
+| **Build** | PR / push / release | Release binaries for `tray` and `toggle` |
+| **Nightly Release** | Push to `main` | Updates `nightly` tag with latest binaries |
+| **Stable Release** | Release published | Attaches binaries to the GitHub release |
+| **Docs** | Push to `main` | Builds and deploys rustdoc to GitHub Pages |
+| **AUR Publish** | Release / manual | Updates AUR `PKGBUILD` and `.SRCINFO` |
+
+Builds use `sccache` with the GitHub Actions cache backend. Binaries are renamed on release to match the package names in `PKGBUILD` (`msi-coolerboost` and `msi-coolerboost-toggle`).

@@ -8,12 +8,14 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish to AUR (e.g., 1.0.0)"
+        required: false
+        type: string
 
 permissions:
   contents: read
-  packages: write
-  pages: write
-  id-token: write
 
 concurrency:
   group: "${{ github.workflow }}-${{ github.ref }}"
@@ -21,6 +23,7 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
   SCCACHE_GHA_ENABLED: "true"
   RUSTC_WRAPPER: "sccache"
 
@@ -28,15 +31,16 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    environment:
-      name: "${{ github.ref_name }}"
     steps:
       - id: checkout
         name: Checkout
         uses: actions/checkout@v7.0.1
+
       - id: install_deps
         name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libglib2.0-dev pkg-config
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libglib2.0-dev pkg-config
 
       - id: setup_rust
         name: Setup Rust
@@ -52,36 +56,55 @@ jobs:
       - id: run_lint
         name: Run Lint
         run: |
-          cargo clippy --all-targets --all-features -- -D warnings
+          cargo clippy --all-targets --all-features --locked -- -D warnings
           cargo fmt --all -- --check
+        shell: bash
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - id: checkout
+        name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - id: install_deps
+        name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libglib2.0-dev pkg-config
+
+      - id: setup_rust
+        name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@d197c158264056996cfba74a9c2d93886346edc3
+        with:
+          toolchain: stable
+
+      - id: run_sccache_cache
+        name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad
+
+      - id: run_tests
+        name: Run Tests
+        run: cargo test --all-features --locked
         shell: bash
 
   build:
     name: Build
     runs-on: ubuntu-latest
-    environment:
-      name: "${{ github.ref_name }}"
-      url: "${{ steps.upload_artifact.outputs.artifact-url }}"
     outputs:
-      VERSION: "${{ steps.get_version.outputs.VERSION }}"
-      NAME: "${{ steps.get_name.outputs.NAME }}"
+      VERSION: "${{ steps.metadata.outputs.VERSION }}"
+      NAME: "${{ steps.metadata.outputs.NAME }}"
     steps:
       - id: checkout
         name: Checkout
         uses: actions/checkout@v7.0.1
+
       - id: install_deps
         name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libglib2.0-dev pkg-config
-
-      - id: cache_dependencies
-        name: Cache dependencies
-        uses: actions/cache@v6.1.0
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libglib2.0-dev pkg-config
 
       - id: setup_rust
         name: Setup Rust
@@ -95,51 +118,47 @@ jobs:
 
       - id: build_artifact
         name: Build Artefacts
-        run: cargo build --release --timings
+        run: cargo build --release --locked --timings
         shell: bash
 
-      - id: get_name
-        name: Get Name
-        run: echo "NAME=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].name')" >> $GITHUB_OUTPUT
-        shell: bash
-
-      - id: get_version
-        name: Get Version
+      - id: metadata
+        name: Extract crate metadata
         run: |
-          echo "VERSION=$(cargo pkgid | cut -d# -f2 | cut -d: -f2)" >> $GITHUB_OUTPUT
+          NAME=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].name')
+          VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
+          echo "NAME=$NAME" >> $GITHUB_OUTPUT
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
         shell: bash
 
       - id: upload_tray_artifact
         name: Upload Tray Artifact
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: ${{ steps.get_name.outputs.NAME }}-tray-linux-x64
+          name: ${{ steps.metadata.outputs.NAME }}-tray-linux-x64
           path: target/release/tray
           retention-days: 7
+          if-no-files-found: error
 
       - id: upload_toggle_artifact
         name: Upload Toggle Artifact
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: ${{ steps.get_name.outputs.NAME }}-toggle-linux-x64
+          name: ${{ steps.metadata.outputs.NAME }}-toggle-linux-x64
           path: target/release/toggle
           retention-days: 7
+          if-no-files-found: error
 
-  nightly_release:
+  nightly-release:
     name: Nightly Release
-    needs: [lint, build]
+    needs: [lint, test, build]
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    environment:
-      name: "${{ github.ref_name }}"
     permissions:
       contents: write
     steps:
       - id: checkout
         name: Checkout
         uses: actions/checkout@v7.0.1
-      - id: install_deps
-        name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libglib2.0-dev pkg-config
 
       - id: download_artifacts
         name: Download Artefacts
@@ -153,7 +172,7 @@ jobs:
         name: Prepare Binaries
         run: |
           mkdir -p release/
-          cp dist/${{ needs.build.outputs.NAME }}-tray-linux-x64/tray release/${{ needs.build.outputs.NAME }}-tray
+          cp dist/${{ needs.build.outputs.NAME }}-tray-linux-x64/tray release/${{ needs.build.outputs.NAME }}
           cp dist/${{ needs.build.outputs.NAME }}-toggle-linux-x64/toggle release/${{ needs.build.outputs.NAME }}-toggle
           chmod +x release/*
         shell: bash
@@ -186,14 +205,50 @@ jobs:
             From commit: ${{ github.sha }}
             Generated on: ${{ github.event.head_commit.timestamp }}
 
+  release:
+    name: Stable Release
+    needs: [lint, test, build]
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - id: download_artifacts
+        name: Download Artefacts
+        uses: actions/download-artifact@v8.0.1
+        with:
+          pattern: "${{ needs.build.outputs.NAME }}-*"
+          path: dist/
+          merge-multiple: false
+
+      - id: prepare_binaries
+        name: Prepare Binaries
+        run: |
+          mkdir -p release/
+          cp dist/${{ needs.build.outputs.NAME }}-tray-linux-x64/tray release/${{ needs.build.outputs.NAME }}
+          cp dist/${{ needs.build.outputs.NAME }}-toggle-linux-x64/toggle release/${{ needs.build.outputs.NAME }}-toggle
+          chmod +x release/*
+        shell: bash
+
+      - id: upload_release_assets
+        name: Upload Release Assets
+        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        with:
+          files: release/*
+
   docs:
     name: Documentation
-    needs: [lint, build]
+    needs: [lint, test, build]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: "${{ steps.deployment.outputs.page_url }}"
+    permissions:
+      pages: write
+      id-token: write
     concurrency:
       group: pages
       cancel-in-progress: false
@@ -201,9 +256,12 @@ jobs:
       - id: checkout
         name: Checkout
         uses: actions/checkout@v7.0.1
+
       - id: install_deps
         name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libglib2.0-dev pkg-config
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libglib2.0-dev pkg-config
 
       - id: setup_rust
         name: Setup Rust
@@ -217,18 +275,20 @@ jobs:
 
       - id: build_docs
         name: Build Documentation
-        run: cargo doc --no-deps
+        run: cargo doc --no-deps --locked
 
       - id: flatten_docs
         name: Flatten Docs
         run: |
           PKG_NAME=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].name')
-          cp -r target/doc/${PKG_NAME}/* target/doc/ 2>/dev/null || true
-          rm -rf target/doc/${PKG_NAME} 2>/dev/null || true
+          # Cargo normalizes hyphens to underscores in target/doc paths.
+          DOCS_DIR=$(echo "$PKG_NAME" | tr '-' '_')
+          cp -r target/doc/${DOCS_DIR}/* target/doc/ 2>/dev/null || true
+          rm -rf target/doc/${DOCS_DIR} 2>/dev/null || true
 
       - id: upload_artifact
         name: Upload Pages Artifact
-        uses: actions/upload-pages-artifact@v5
+        uses: actions/upload-pages-artifact@v5.0.0
         with:
           path: target/doc/
 
@@ -240,6 +300,8 @@ jobs:
     name: Publish to AUR
     if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
     environment:
       name: aur
     steps:
@@ -247,15 +309,25 @@ jobs:
         name: Checkout
         uses: actions/checkout@v7.0.1
 
+      - id: install_deps
+        name: Install dependencies
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm openssh git base-devel curl sudo
+
       - id: get_version
         name: Get Version
         run: |
           if [ -n "${{ github.event.release.tag_name }}" ]; then
             VERSION="${{ github.event.release.tag_name }}"
-          elif [ -n "${{ github.event.inputs.version }}" ]; then
-            VERSION="${{ github.event.inputs.version }}"
+          elif [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
           fi
           VERSION="${VERSION#v}"
+          if [ -z "$VERSION" ]; then
+            echo "No version could be determined" >&2
+            exit 1
+          fi
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
         shell: bash
 
@@ -263,7 +335,7 @@ jobs:
         name: Setup SSH for AUR
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > ~/.ssh/aur_key
+          printf '%s\n' "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > ~/.ssh/aur_key
           chmod 600 ~/.ssh/aur_key
           cat >> ~/.ssh/config << 'SSHEOF'
           Host aur.archlinux.org
@@ -285,7 +357,7 @@ jobs:
         name: Compute Source Checksum
         run: |
           VERSION="${{ steps.get_version.outputs.VERSION }}"
-          URL="https://github.com/XodiumSoftware/msi-coolerboost/archive/refs/tags/v${VERSION}.tar.gz"
+          URL="https://github.com/${{ github.repository }}/archive/refs/tags/v${VERSION}.tar.gz"
           curl -sL "$URL" -o source.tar.gz
           SHA256=$(sha256sum source.tar.gz | cut -d' ' -f1)
           echo "SHA256=$SHA256" >> $GITHUB_OUTPUT
@@ -307,10 +379,10 @@ jobs:
       - id: generate_srcinfo
         name: Generate .SRCINFO
         run: |
+          useradd -m -s /bin/bash builder
+          chown -R builder:builder aur-repo
           cd aur-repo
-          if command -v makepkg &> /dev/null; then
-            makepkg --printsrcinfo > .SRCINFO
-          fi
+          su builder -c 'makepkg --printsrcinfo' > .SRCINFO
         shell: bash
 
       - id: commit_and_push
