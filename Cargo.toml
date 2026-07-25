@@ -13,8 +13,8 @@ path = "src/bin/toggle.rs"
 
 [dependencies]
 ksni = { version = "0.3", features = ["blocking"] }
-notify-rust = "4"
 dirs = "6"
+notify-rust = { version = "4.18.0", default-features = false, features = ["d"] }
 
 [profile.release]
 opt-level = 3
