@@ -6,18 +6,16 @@
 - **Type:** System tray application
 - **Language:** Rust
 - **Build Tool:** Cargo
-- **GUI Framework:** tray-icon + winit
-- **Output:** Two binaries (tray GUI + CLI toggle)
+- **GUI Framework:** ksni
+- **Output:** Two binaries (`msi-coolerboost` tray GUI + `msi-coolerboost-toggle` CLI toggle)
 
 ## APIs & Tools
 
 | Category | Technology | Purpose |
 |----------|------------|---------|
-| **GUI** | tray-icon | System tray icon and menu |
-| **Windowing** | winit | Event loop and window management |
+| **GUI** | ksni | System tray icon and menu |
 | **Config Paths** | dirs | XDG directories |
 | **Notifications** | notify-rust | Desktop notifications |
-| **Image** | image | Icon generation (RGBA) |
 
 ## Quick Commands
 
@@ -29,10 +27,10 @@ cargo build
 cargo build --release
 
 # Run system tray
-cargo run --bin tray
+cargo run --bin msi-coolerboost
 
 # Run toggle (CLI)
-cargo run --bin toggle
+cargo run --bin msi-coolerboost-toggle
 ```
 
 ## Architecture Overview
@@ -109,10 +107,10 @@ Implemented via `.github/workflows/rust.yml`:
 |-----|---------|---------|
 | **Lint** | PR / push | `cargo clippy` + `cargo fmt` |
 | **Test** | PR / push | `cargo test` |
-| **Build** | PR / push / release | Release binaries for `tray` and `toggle` |
+| **Build** | PR / push / release | Release binaries for `msi-coolerboost` and `msi-coolerboost-toggle` |
 | **Nightly Release** | Push to `main` | Updates `nightly` tag with latest binaries |
 | **Stable Release** | Release published | Attaches binaries to the GitHub release |
 | **Docs** | Push to `main` | Builds and deploys rustdoc to GitHub Pages |
 | **AUR Publish** | Release / manual | Updates AUR `PKGBUILD` and `.SRCINFO` |
 
-Builds use `sccache` with the GitHub Actions cache backend. Binaries are renamed on release to match the package names in `PKGBUILD` (`msi-coolerboost` and `msi-coolerboost-toggle`).
+Builds use `sccache` with the GitHub Actions cache backend. Release binaries already match the package names in `PKGBUILD` (`msi-coolerboost` and `msi-coolerboost-toggle`).

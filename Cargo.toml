@@ -3,12 +3,20 @@ name = "msi-coolerboost"
 version = "1.0.0"
 edition = "2021"
 
+[[bin]]
+name = "msi-coolerboost"
+path = "src/bin/tray.rs"
+
+[[bin]]
+name = "msi-coolerboost-toggle"
+path = "src/bin/toggle.rs"
+
 [dependencies]
 ksni = { version = "0.3", features = ["blocking"] }
 notify-rust = "4"
 dirs = "6"
-image = "0.25"
 
 [profile.release]
 opt-level = 3
 lto = true
+strip = true

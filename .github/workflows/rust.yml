@@ -134,8 +134,8 @@ jobs:
         name: Upload Tray Artifact
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: ${{ steps.metadata.outputs.NAME }}-tray-linux-x64
-          path: target/release/tray
+          name: ${{ steps.metadata.outputs.NAME }}-linux-x64
+          path: target/release/${{ steps.metadata.outputs.NAME }}
           retention-days: 7
           if-no-files-found: error
 
@@ -144,7 +144,7 @@ jobs:
         uses: actions/upload-artifact@v7.0.1
         with:
           name: ${{ steps.metadata.outputs.NAME }}-toggle-linux-x64
-          path: target/release/toggle
+          path: target/release/${{ steps.metadata.outputs.NAME }}-toggle
           retention-days: 7
           if-no-files-found: error
 
@@ -172,8 +172,8 @@ jobs:
         name: Prepare Binaries
         run: |
           mkdir -p release/
-          cp dist/${{ needs.build.outputs.NAME }}-tray-linux-x64/tray release/${{ needs.build.outputs.NAME }}
-          cp dist/${{ needs.build.outputs.NAME }}-toggle-linux-x64/toggle release/${{ needs.build.outputs.NAME }}-toggle
+          cp dist/${{ needs.build.outputs.NAME }}-linux-x64/${{ needs.build.outputs.NAME }} release/
+          cp dist/${{ needs.build.outputs.NAME }}-toggle-linux-x64/${{ needs.build.outputs.NAME }}-toggle release/
           chmod +x release/*
         shell: bash
 
@@ -225,8 +225,8 @@ jobs:
         name: Prepare Binaries
         run: |
           mkdir -p release/
-          cp dist/${{ needs.build.outputs.NAME }}-tray-linux-x64/tray release/${{ needs.build.outputs.NAME }}
-          cp dist/${{ needs.build.outputs.NAME }}-toggle-linux-x64/toggle release/${{ needs.build.outputs.NAME }}-toggle
+          cp dist/${{ needs.build.outputs.NAME }}-linux-x64/${{ needs.build.outputs.NAME }} release/
+          cp dist/${{ needs.build.outputs.NAME }}-toggle-linux-x64/${{ needs.build.outputs.NAME }}-toggle release/
           chmod +x release/*
         shell: bash
 

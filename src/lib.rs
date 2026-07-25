@@ -42,8 +42,8 @@ pub fn check_status() -> bool {
 /// Retrieves the currently configured `CoolerBoost` shortcut from Hyprland bindings.
 ///
 /// Parses `~/.config/hypr/bindings.conf` looking for a comment line containing
-/// `CoolerBoost` followed by a `bindd = ...` entry and returns a formatted
-/// string such as `"SUPER + F10"`.
+/// `CoolerBoost`, then the next non-empty, non-comment `bindd = ...` line, and
+/// returns a formatted string such as `"SUPER + F10"`.
 ///
 /// # Returns
 /// The parsed shortcut, or `"Unknown"` if parsing fails.
@@ -56,9 +56,14 @@ pub fn get_current_shortcut() -> String {
     let mut lines = content.lines().peekable();
     while let Some(line) = lines.next() {
         if line.contains("CoolerBoost") {
-            if let Some(next) = lines.peek() {
-                let Some(bind) = next.strip_prefix("bindd = ") else {
+            while let Some(next) = lines.peek() {
+                let trimmed = next.trim();
+                if trimmed.is_empty() || trimmed.starts_with('#') {
+                    lines.next();
                     continue;
+                }
+                let Some(bind) = next.strip_prefix("bindd = ") else {
+                    break;
                 };
                 let parts: Vec<&str> = bind.split(',').collect();
                 if parts.len() >= 2 {
@@ -68,6 +73,7 @@ pub fn get_current_shortcut() -> String {
                         return format!("{modifiers} + {key}");
                     }
                 }
+                break;
             }
         }
     }
@@ -86,7 +92,7 @@ pub fn get_current_shortcut() -> String {
 ///
 /// # Errors
 /// Returns an error if the config directory or bindings file cannot be
-/// determined/read/written.
+/// determined/read/written, or if a `CoolerBoost` binding block is missing.
 pub fn set_shortcut(modifiers: &str, key: &str) -> Result<(), Box<dyn std::error::Error>> {
     let path = bindings_path().ok_or("unable to determine config directory")?;
     let content = fs::read_to_string(&path)?;
@@ -105,13 +111,21 @@ pub fn set_shortcut(modifiers: &str, key: &str) -> Result<(), Box<dyn std::error
         new_content.push('\n');
 
         if !replaced && line.contains("# CoolerBoost") {
-            if let Some(next) = lines.peek() {
+            while let Some(next) = lines.peek() {
+                let trimmed = next.trim();
+                if trimmed.is_empty() || trimmed.starts_with('#') {
+                    new_content.push_str(next);
+                    new_content.push('\n');
+                    lines.next();
+                    continue;
+                }
                 if next.starts_with("bindd = ") {
                     lines.next(); // consume old bind line
                     new_content.push_str(&new_line);
                     new_content.push('\n');
                     replaced = true;
                 }
+                break;
             }
         }
     }
@@ -191,16 +205,16 @@ pub fn show_notification(title: &str, body: &str) {
 /// A flat `Vec<u8>` containing the RGBA pixel data, row by row.
 #[must_use]
 pub fn create_icon_rgba(enabled: bool, size: u32) -> Vec<u8> {
-    use image::{ImageBuffer, Rgba};
-
     let (r, g, b) = if enabled {
         (76, 175, 80) // Green
     } else {
         (117, 117, 117) // Gray
     };
 
-    let mut img = ImageBuffer::new(size, size);
+    let mut pixels = vec![0u8; (size * size * 4) as usize];
     let half = f64::from(size) / 2.0;
+    let inner = f64::from(size) * 0.44;
+    let outer = f64::from(size) * 0.47;
 
     for y in 0..size {
         for x in 0..size {
@@ -208,21 +222,28 @@ pub fn create_icon_rgba(enabled: bool, size: u32) -> Vec<u8> {
             let dy = f64::from(y) - half;
             let dist = (dx * dx + dy * dy).sqrt();
 
-            if dist < (f64::from(size) * 0.44) {
-                img.put_pixel(x, y, Rgba([r, g, b, 255]));
-            } else if dist < (f64::from(size) * 0.47) {
-                // The antialiasing factor is geometrically bounded to [0, 255],
-                // so the truncation and sign-loss casts below are safe.
-                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-                let alpha = ((f64::from(size) * 0.47 - dist) * 255.0) as u8;
-                img.put_pixel(x, y, Rgba([r, g, b, alpha]));
+            let alpha = if dist < inner {
+                255.0
+            } else if dist < outer {
+                (outer - dist) * 255.0
             } else {
-                img.put_pixel(x, y, Rgba([0, 0, 0, 0]));
-            }
+                0.0
+            };
+
+            // The antialiasing factor is geometrically bounded to [0, 255],
+            // so the truncation and sign-loss casts below are safe.
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            let a = alpha as u8;
+
+            let idx = ((y * size + x) * 4) as usize;
+            pixels[idx] = r;
+            pixels[idx + 1] = g;
+            pixels[idx + 2] = b;
+            pixels[idx + 3] = a;
         }
     }
 
-    img.into_raw()
+    pixels
 }
 
 #[cfg(test)]
@@ -256,6 +277,16 @@ mod tests {
     }
 
     #[test]
+    fn get_current_shortcut_skips_blank_and_comment_lines() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let (dir, _) = temp_config(
+            "# CoolerBoost Fan Toggle\n\n# another comment\nbindd = SUPER SHIFT, F10, Toggle CoolerBoost, exec, msi-coolerboost-toggle\n",
+        );
+        std::env::set_var("XDG_CONFIG_HOME", &dir);
+        assert_eq!(get_current_shortcut(), "SUPER SHIFT + F10");
+    }
+
+    #[test]
     fn get_current_shortcut_returns_unknown_when_missing() {
         let _guard = ENV_LOCK.lock().unwrap();
         let (dir, _) =
@@ -274,6 +305,20 @@ mod tests {
         assert!(content.contains(
             "bindd = SUPER SHIFT, F10, Toggle CoolerBoost, exec, msi-coolerboost toggle",
         ));
+    }
+
+    #[test]
+    fn set_shortcut_skips_blank_and_comment_lines() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let (dir, path) = temp_config(
+            "# CoolerBoost Fan Toggle\n\n# comment\nbindd = SUPER CTRL, F, Toggle CoolerBoost, exec, msi-coolerboost-toggle\n",
+        );
+        std::env::set_var("XDG_CONFIG_HOME", &dir);
+        set_shortcut("ALT", "X").unwrap();
+        let content = std::fs::read_to_string(path).unwrap();
+        assert!(
+            content.contains("bindd = ALT, X, Toggle CoolerBoost, exec, msi-coolerboost toggle")
+        );
     }
 
     #[test]

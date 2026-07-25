@@ -19,8 +19,8 @@ build() {
 package() {
   cd "$pkgname-$pkgver"
 
-  install -Dm755 target/release/tray "$pkgdir/usr/bin/$pkgname"
-  install -Dm755 target/release/toggle "$pkgdir/usr/bin/$pkgname-toggle"
+  install -Dm755 target/release/msi-coolerboost "$pkgdir/usr/bin/$pkgname"
+  install -Dm755 target/release/msi-coolerboost-toggle "$pkgdir/usr/bin/$pkgname-toggle"
 
   install -Dm644 "$pkgname.desktop" "$pkgdir/usr/share/applications/$pkgname.desktop"
 
