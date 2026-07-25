@@ -66,7 +66,38 @@ sudo cp msi-coolerboost.desktop /usr/local/share/applications/
 ### Install Script
 
 ```bash
+# Install without enabling systemd autostart
 ./install.sh
+
+# Install and enable systemd user service that starts the tray on login
+./install.sh --systemd
+```
+
+When run without `--systemd`, the script will ask whether to enable the systemd user service.
+
+### Systemd User Service
+
+If you skipped the install-script setup, you can install and enable the service manually:
+
+```bash
+sudo tee /usr/lib/systemd/user/msi-coolerboost.service > /dev/null <> 'EOF'
+[Unit]
+Description=MSI CoolerBoost system tray
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/msi-coolerboost tray
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
+WantedBy=graphical-session.target
+EOF
+
+systemctl --user daemon-reload
+systemctl --user enable --now msi-coolerboost.service
 ```
 
 ---
@@ -84,7 +115,7 @@ bindd = SUPER CTRL, F, Toggle CoolerBoost, exec, msi-coolerboost toggle
 
 ### Autostart
 
-Add to `~/.config/hypr/autostart.conf`:
+If you are **not** using the systemd user service, add to `~/.config/hypr/autostart.conf`:
 
 ```conf
 exec-once = uwsm-app -- msi-coolerboost tray
@@ -157,7 +188,13 @@ Should show:
 
 ### Tray icon not appearing
 
-Ensure your status bar supports system tray icons (Waybar, etc.).
+Ensure your status bar supports system tray icons (Waybar, etc.) and that the systemd user service is running:
+
+```bash
+systemctl --user status msi-coolerboost.service
+```
+
+If you are not using the systemd service, start the tray directly with `msi-coolerboost tray`.
 
 ### "isw: command not found"
 

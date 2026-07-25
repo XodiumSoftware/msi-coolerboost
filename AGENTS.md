@@ -20,19 +20,22 @@
 ## Quick Commands
 
 ```bash
-: Build (debug)
+# Build (debug)
 cargo build
 
-: Build (release)
+# Build (release)
 cargo build --release
 
-: Run system tray
+# Run system tray
 cargo run -- tray
 
-: Run toggle (CLI)
+# Run toggle (CLI)
 cargo run -- toggle
-: or simply:
+# or simply:
 cargo run
+
+# Install with systemd autostart
+./install.sh --systemd
 ```
 
 ## Architecture Overview
