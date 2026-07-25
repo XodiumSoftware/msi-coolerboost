@@ -1,8 +1,15 @@
+//! System tray application for MSI CoolerBoost.
+//!
+//! Registers a tray icon that reflects the current CoolerBoost state. Clicking
+//! the icon toggles the state, and the right-click menu displays the current
+//! Hyprland shortcut plus a quit option.
+
 use ksni::{self, blocking::TrayMethods, menu::StandardItem, MenuItem, ToolTip};
 
 /// Represents the current tray state for MSI CoolerBoost.
 #[derive(Debug)]
 struct TrayState {
+    /// Whether CoolerBoost is currently enabled.
     enabled: bool,
 }
 
@@ -19,15 +26,19 @@ impl ksni::Tray for TrayState {
         "MSI CoolerBoost".into()
     }
 
+    /// Called when the user clicks the tray icon. Toggles CoolerBoost and
+    /// refreshes the cached state.
     fn activate(&mut self, _x: i32, _y: i32) {
         msi_coolerboost::toggle();
         self.enabled = msi_coolerboost::check_status();
     }
 
+    /// Returns the icon shown in the system tray.
     fn icon_pixmap(&self) -> Vec<ksni::Icon> {
         vec![self.create_icon()]
     }
 
+    /// Returns the tooltip shown when hovering over the tray icon.
     fn tool_tip(&self) -> ToolTip {
         ToolTip {
             title: "MSI CoolerBoost".into(),
@@ -37,6 +48,7 @@ impl ksni::Tray for TrayState {
         }
     }
 
+    /// Builds the tray context menu.
     fn menu(&self) -> Vec<MenuItem<Self>> {
         let shortcut = msi_coolerboost::get_current_shortcut();
 
@@ -68,8 +80,9 @@ impl ksni::Tray for TrayState {
 impl TrayState {
     /// Creates a system tray icon from the current state.
     ///
-    /// Converts RGBA pixel data from `create_icon_rgba` into ARGB format
-    /// required by the system tray, with alpha channel in the first byte.
+    /// Converts RGBA pixel data from [`create_icon_rgba`](msi_coolerboost::create_icon_rgba)
+    /// into ARGB format required by the system tray, with the alpha channel in
+    /// the first byte.
     fn create_icon(&self) -> ksni::Icon {
         let rgba = msi_coolerboost::create_icon_rgba(self.enabled, 64);
         let data: Vec<u8> = rgba
@@ -86,8 +99,9 @@ impl TrayState {
 
 /// Entry point for the MSI CoolerBoost system tray application.
 ///
-/// Initializes the tray state from the current CoolerBoost status
-/// and starts the tray service event loop.
+/// Initializes the tray state from the current CoolerBoost status and starts
+/// the tray service event loop. The main thread parks indefinitely so the tray
+/// icon remains active until the user quits.
 fn main() {
     let enabled = msi_coolerboost::check_status();
     TrayState { enabled }.spawn().expect("failed to spawn tray");

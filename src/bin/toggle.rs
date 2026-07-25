@@ -13,9 +13,10 @@
 //! msi-coolerboost toggle
 //! ```
 
-/// Entry point for toggling MSI CoolerBoost from CLI.
+/// Entry point for toggling MSI CoolerBoost from the CLI.
 ///
-/// Prints the resulting state after toggling.
+/// Calls the shared [`toggle`](msi_coolerboost::toggle) function and prints the
+/// resulting state to stdout as either `CoolerBoost: ON` or `CoolerBoost: OFF`.
 fn main() {
     let is_enabled: bool = msi_coolerboost::toggle();
     println!("CoolerBoost: {}", if is_enabled { "ON" } else { "OFF" });

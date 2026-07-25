@@ -1,23 +1,43 @@
+//! Core library for MSI CoolerBoost.
+//!
+//! Provides shared functionality for checking, toggling and displaying the
+//! CoolerBoost fan-boost state on MSI laptops through the `isw` tool. Also
+//! includes helpers for parsing and updating the Hyprland keybinding as well
+//! as generating a status icon and desktop notifications.
+
 use notify_rust::Notification;
 use regex::Regex;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
+/// Path to the state file used to mirror the current CoolerBoost state.
+///
+/// The file is created when CoolerBoost is ON and removed when OFF. It lives
+/// on tmpfs so it is automatically cleared on reboot.
 pub const STATE_FILE: &str = "/tmp/isw_coolerboost";
+
+/// Path to the Hyprland bindings file, relative to the user's home directory.
 pub const BINDINGS_FILE: &str = ".config/hypr/bindings.conf";
 
 /// Checks whether CoolerBoost is currently enabled.
 ///
-/// This is determined by the presence of a state file.
+/// This is determined by the presence of [`STATE_FILE`].
+///
+/// # Returns
+/// `true` if the state file exists, otherwise `false`.
 pub fn check_status() -> bool {
     PathBuf::from(STATE_FILE).exists()
 }
 
 /// Retrieves the currently configured CoolerBoost shortcut from Hyprland bindings.
 ///
-/// Returns a formatted string like "SUPER + F10".
-/// Falls back to "Unknown" if parsing fails.
+/// Parses `~/.config/hypr/bindings.conf` looking for a comment line containing
+/// `CoolerBoost` followed by a `bindd = ...` entry and returns a formatted
+/// string such as `"SUPER + F10"`.
+///
+/// # Returns
+/// The parsed shortcut, or `"Unknown"` if parsing fails.
 pub fn get_current_shortcut() -> String {
     let home = std::env::var("HOME").unwrap_or_default();
     let bindings_path = PathBuf::from(home).join(BINDINGS_FILE);
@@ -31,14 +51,19 @@ pub fn get_current_shortcut() -> String {
     "Unknown".to_string()
 }
 
-/// Updates the CoolerBoost keybinding in Hyprland config.
+/// Updates the CoolerBoost keybinding in the Hyprland config.
+///
+/// Replaces the existing `bindd` line associated with the `CoolerBoost`
+/// comment block in `~/.config/hypr/bindings.conf` and triggers a Hyprland
+/// reload.
 ///
 /// # Arguments
-/// * `modifiers` - Modifier keys (e.g. "SUPER")
-/// * `key` - Key to bind (e.g. "F10")
+/// * `modifiers` - Modifier keys (e.g. `"SUPER"`).
+/// * `key` - Key to bind (e.g. `"F10"`). It will be uppercased automatically.
 ///
 /// # Errors
-/// Returns an error if the config file cannot be read or written.
+/// Returns an error if the `HOME` environment variable is missing, the
+/// bindings file cannot be read, or the updated file cannot be written.
 pub fn set_shortcut(modifiers: &str, key: &str) -> Result<(), Box<dyn std::error::Error>> {
     let home = std::env::var("HOME")?;
     let bindings_path = PathBuf::from(home).join(BINDINGS_FILE);
@@ -57,12 +82,20 @@ pub fn set_shortcut(modifiers: &str, key: &str) -> Result<(), Box<dyn std::error
 
     fs::write(&bindings_path, new_content.as_ref())?;
 
-    // Reload hyprland
+    // Reload hyprland so the new shortcut takes effect immediately.
     let _ = Command::new("hyprctl").arg("reload").output();
 
     Ok(())
 }
 
+/// Toggles the CoolerBoost state.
+///
+/// Executes `isw -b on` or `isw -b off` via `sudo`, updates [`STATE_FILE`]
+/// accordingly and shows a desktop notification. Errors from the underlying
+/// commands are intentionally ignored because this tool is best-effort.
+///
+/// # Returns
+/// The new state: `true` for ON, `false` for OFF.
 pub fn toggle() -> bool {
     if check_status() {
         let _ = Command::new("sudo").args(["isw", "-b", "off"]).output();
@@ -77,6 +110,14 @@ pub fn toggle() -> bool {
     }
 }
 
+/// Shows a desktop notification with the given title and body.
+///
+/// The notification is displayed on a background thread and automatically
+/// dismissed after two seconds.
+///
+/// # Arguments
+/// * `title` - Notification summary.
+/// * `body` - Notification body text.
 pub fn show_notification(title: &str, body: &str) {
     let title = title.to_string();
     let body = body.to_string();
@@ -89,6 +130,18 @@ pub fn show_notification(title: &str, body: &str) {
     });
 }
 
+/// Generates a square RGBA icon representing the current CoolerBoost state.
+///
+/// Produces a smooth circle. When `enabled` is `true` the circle is green
+/// (`#4CAF50`); otherwise it is gray (`#757575`). Pixels outside the circle
+/// are transparent.
+///
+/// # Arguments
+/// * `enabled` - Whether CoolerBoost is currently enabled.
+/// * `size` - Width and height of the generated icon in pixels.
+///
+/// # Returns
+/// A flat `Vec<u8>` containing the RGBA pixel data, row by row.
 pub fn create_icon_rgba(enabled: bool, size: u32) -> Vec<u8> {
     use image::{ImageBuffer, Rgba};
 
