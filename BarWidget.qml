@@ -20,22 +20,44 @@ Item {
   property string moduleName: "xodium.msi-coolerboost"
   property var settings: ({})
 
+  function registerWithBar() {
+    if (root.bar && root.bar.registerClickTarget) root.bar.registerClickTarget(root)
+  }
+  function unregisterFromBar() {
+    if (root.bar && root.bar.unregisterClickTarget) root.bar.unregisterClickTarget(root)
+  }
+
+  onBarChanged: {
+    unregisterFromBar()
+    registerWithBar()
+  }
+  Component.onCompleted: registerWithBar()
+  Component.onDestruction: unregisterFromBar()
+
   readonly property bool coolerBoostEnabled: String(stateFile.text() || "").trim() !== ""
   readonly property int barSize: bar ? bar.barSize : 26
   property string shortcut: "Unknown"
+  property bool toggling: false
   property string tooltipText: "MSI CoolerBoost: " + (root.coolerBoostEnabled ? "ON" : "OFF") + "\nShortcut: " + root.shortcut
 
   implicitWidth: root.barSize
   implicitHeight: root.barSize
 
   function toggle() {
-    if (toggleProc.running) return
+    if (root.toggling) return
+    root.toggling = true
+    toggleCooldown.restart()
     if (root.coolerBoostEnabled) {
-      toggleProc.command = ["bash", "-c", "sudo isw -b off"]
+      Quickshell.execDetached([
+        "bash", "-c",
+        "sudo isw -b off && rm -f /tmp/isw_coolerboost && notify-send -u low 'CoolerBoost OFF' 'Fan boost disabled'"
+      ])
     } else {
-      toggleProc.command = ["bash", "-c", "sudo isw -b on"]
+      Quickshell.execDetached([
+        "bash", "-c",
+        "sudo isw -b on && echo on > /tmp/isw_coolerboost && notify-send -u low 'CoolerBoost ON' 'Fan boost enabled'"
+      ])
     }
-    toggleProc.running = true
   }
 
   function refreshShortcut() {
@@ -59,32 +81,6 @@ Item {
   }
 
   Process {
-    id: toggleProc
-    command: ["bash", "-c", "true"]
-    onExited: function(exitCode) {
-      if (exitCode === 0) {
-        if (root.coolerBoostEnabled) {
-          Quickshell.execDetached(["bash", "-c", "rm -f /tmp/isw_coolerboost"])
-          Quickshell.execDetached(["notify-send", "-u", "low", "CoolerBoost OFF", "Fan boost disabled"])
-        } else {
-          Quickshell.execDetached(["bash", "-c", "echo on > /tmp/isw_coolerboost"])
-          Quickshell.execDetached(["notify-send", "-u", "low", "CoolerBoost ON", "Fan boost enabled"])
-        }
-      } else {
-        Quickshell.execDetached(["notify-send", "-u", "critical", "CoolerBoost Error", "isw command failed"])
-      }
-      syncTimer.restart()
-    }
-  }
-
-  Timer {
-    id: syncTimer
-    interval: 500
-    repeat: false
-    onTriggered: stateFile.reload()
-  }
-
-  Process {
     id: shortcutProc
     command: ["bash", "-c", "grep -m1 'msi-coolerboost.*toggle' ~/.config/hypr/bindings.lua | sed 's/.*o.bind(\"//; s/\",.*//'"]
     stdout: StdioCollector {
@@ -103,9 +99,20 @@ Item {
     }
   }
 
-  IpcHandler {
-    target: "xodium.msi-coolerboost"
-    function toggle(): void { root.toggle() }
+  Timer {
+    id: toggleCooldown
+    interval: 2000
+    repeat: false
+    onTriggered: root.toggling = false
+  }
+
+  Timer {
+    id: syncTimer
+    interval: 500
+    repeat: true
+    triggeredOnStart: false
+    running: root.toggling
+    onTriggered: stateFile.reload()
   }
 
   Text {
