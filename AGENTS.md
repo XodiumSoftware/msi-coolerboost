@@ -29,7 +29,7 @@ omarchy plugin add https://github.com/XodiumSoftware/msi-coolerboost.git --enabl
 | File | Purpose |
 |------|---------|
 | `manifest.json` | Quickshell plugin manifest (`id: xodium.msi-coolerboost`) |
-| `BarWidget.qml` | Self-contained bar widget using only `QtQuick`, `Quickshell`, and `Quickshell.Io`. Toggles via `sudo isw -b on/off` and reads `/tmp/isw_coolerboost` for state. |
+| `BarWidget.qml` | Self-contained bar widget using only `QtQuick`, `Quickshell`, and `Quickshell.Io`. Toggles via `sudo isw -b on/off`, reads `/tmp/isw_coolerboost` for state, and exposes an `IpcHandler` target so Hyprland can call `omarchy-shell xodium.msi-coolerboost toggle`. |
 
 The Hyprland keybinding uses the same shell toggle the widget uses; the
 widget only reads the shortcut for display.
@@ -51,7 +51,7 @@ omarchy-shell xodium.msi-coolerboost toggle
 
 **Keyboard shortcut (bindings.lua for Omarchy 4 / Hyprland 0.56):**
 ```lua
-o.bind("SUPER CTRL, F", "Toggle CoolerBoost", "omarchy-shell xodium.msi-coolerboost toggle")
+o.bind("XF86Launch7", "Toggle CoolerBoost", "omarchy-shell xodium.msi-coolerboost toggle")
 ```
 
 **Omarchy 4 autostart:** the bar widget is loaded by `omarchy-shell`; no

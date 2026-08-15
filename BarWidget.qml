@@ -2,15 +2,16 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// Self-contained bar widget for MSI CoolerBoost.
+// Self-contained Omarchy 4 bar widget for MSI CoolerBoost.
 //
 // Shows a fan icon in the Omarchy bar. The icon uses the bar's urgent color
 // when CoolerBoost is enabled and the normal foreground when off.
 // Left click toggles CoolerBoost by running `sudo isw -b on/off`.
 // Right click refreshes the configured Hyprland shortcut tooltip.
 //
-// Bind a Hyprland key to the same shell toggle the widget uses, for example:
-//   o.bind("XF86Launch7", "Toggle CoolerBoost", "bash -c 'if [ -f /tmp/isw_coolerboost ]; then sudo isw -b off && rm -f /tmp/isw_coolerboost && notify-send -u low CoolerBoost OFF \"Fan boost disabled\"; else sudo isw -b on && echo on > /tmp/isw_coolerboost && notify-send -u low CoolerBoost ON \"Fan boost enabled\"; fi'")
+// The widget registers an IPC target under its plugin id, so a Hyprland
+// shortcut can call the same toggle logic the widget uses:
+//   o.bind("XF86Launch7", "Toggle CoolerBoost", "omarchy-shell xodium.msi-coolerboost toggle")
 Item {
   id: root
 
@@ -44,14 +45,19 @@ Item {
     unregisterFromBar()
     registerWithBar()
   }
-  Component.onCompleted: registerWithBar()
+  Component.onCompleted: {
+    registerWithBar()
+    root.refreshShortcut()
+  }
   Component.onDestruction: unregisterFromBar()
 
   readonly property bool coolerBoostEnabled: String(stateFile.text() || "").trim() !== ""
   readonly property int barSize: bar ? bar.barSize : 26
   property string shortcut: "Unknown"
   property bool toggling: false
-  property string tooltipText: "MSI CoolerBoost: " + (root.coolerBoostEnabled ? "ON" : "OFF") + "\nShortcut: " + root.shortcut
+  property string tooltipText: "MSI CoolerBoost: " + (root.coolerBoostEnabled ? "ON" : "OFF")
+    + "\nShortcut: " + root.shortcut
+    + "\nLeft click to toggle"
 
   implicitWidth: root.barSize
   implicitHeight: root.barSize
@@ -61,17 +67,33 @@ Item {
     root.toggling = true
     toggleCooldown.restart()
     syncTimer.start()
+
+    // Run isw and update the mirrored state file in one detached shell so the
+    // widget state stays in lock-step with the hardware command.
     if (root.coolerBoostEnabled) {
-      Quickshell.execDetached(["sudo", "isw", "-b", "off"])
-      Quickshell.execDetached(["bash", "-c", "rm -f /tmp/isw_coolerboost && notify-send -u low 'CoolerBoost OFF' 'Fan boost disabled'"])
+      Quickshell.execDetached([
+        "bash", "-c",
+        "sudo isw -b off && rm -f /tmp/isw_coolerboost && notify-send -u low 'CoolerBoost OFF' 'Fan boost disabled'"
+      ])
     } else {
-      Quickshell.execDetached(["sudo", "isw", "-b", "on"])
-      Quickshell.execDetached(["bash", "-c", "echo on > /tmp/isw_coolerboost && notify-send -u low 'CoolerBoost ON' 'Fan boost enabled'"])
+      Quickshell.execDetached([
+        "bash", "-c",
+        "sudo isw -b on && echo on > /tmp/isw_coolerboost && notify-send -u low 'CoolerBoost ON' 'Fan boost enabled'"
+      ])
     }
   }
 
   function refreshShortcut() {
     if (!shortcutProc.running) shortcutProc.running = true
+  }
+
+  // Expose the same toggle the UI uses to Hyprland via omarchy-shell.
+  IpcHandler {
+    target: root.moduleName
+
+    function toggle(): void {
+      root.toggle()
+    }
   }
 
   FileView {
@@ -92,19 +114,15 @@ Item {
 
   Process {
     id: shortcutProc
-    command: ["bash", "-c", "grep -m1 'msi-coolerboost.*toggle' ~/.config/hypr/bindings.lua | sed 's/.*o.bind(\"//; s/\",.*//'"]
+    command: [
+      "bash", "-c",
+      "grep -m1 'xodium\\.msi-coolerboost.*toggle' ~/.config/hypr/bindings.lua | sed -n 's/o\\.bind(\"\\([^\"]*\\)\".*)/\\1/p'"
+    ]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
         var keys = String(text || "").trim()
-        if (keys) {
-          var idx = keys.lastIndexOf(",")
-          if (idx > 0) {
-            root.shortcut = keys.slice(0, idx).trim() + " + " + keys.slice(idx + 1).trim()
-          } else {
-            root.shortcut = keys
-          }
-        }
+        if (keys) root.shortcut = keys
       }
     }
   }
@@ -131,7 +149,9 @@ Item {
     text: "󰈐"
     font.family: root.bar ? root.bar.fontFamily : "monospace"
     font.pixelSize: root.barSize * 0.58
-    color: root.coolerBoostEnabled ? (root.bar ? root.bar.urgent : "red") : (root.bar ? root.bar.foreground : "white")
+    color: root.coolerBoostEnabled
+      ? (root.bar ? root.bar.urgent : "red")
+      : (root.bar ? root.bar.foreground : "white")
     horizontalAlignment: Text.AlignHCenter
     verticalAlignment: Text.AlignVCenter
   }
@@ -141,6 +161,7 @@ Item {
     anchors.fill: parent
     acceptedButtons: Qt.LeftButton | Qt.RightButton
     hoverEnabled: true
+    cursorShape: Qt.PointingHandCursor
 
     onEntered: {
       if (root.bar) root.bar.showTooltip(root, root.tooltipText)

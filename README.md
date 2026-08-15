@@ -53,7 +53,7 @@ CoolerBoost is on.
 A keyboard shortcut can run the same toggle the widget uses:
 
 ```lua
-o.bind("XF86Launch7", "Toggle CoolerBoost", 'bash -c \'if [ -f /tmp/isw_coolerboost ]; then sudo isw -b off && rm -f /tmp/isw_coolerboost && notify-send -u low CoolerBoost OFF "Fan boost disabled"; else sudo isw -b on && echo on > /tmp/isw_coolerboost && notify-send -u low CoolerBoost ON "Fan boost enabled"; fi\'')
+o.bind("XF86Launch7", "Toggle CoolerBoost", "omarchy-shell xodium.msi-coolerboost toggle")
 ```
 
 <p align="right"><a href="#readme-top">▲</a></p>
