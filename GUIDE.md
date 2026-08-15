@@ -79,7 +79,6 @@ hyprctl reload
 The fan icon appears in the bar section you chose (right by default).
 
 - **Left click:** toggle CoolerBoost
-- **Right click:** refresh the configured shortcut tooltip
 
 ### Keyboard Shortcut
 

@@ -7,7 +7,6 @@ import Quickshell.Io
 // Shows a fan icon in the Omarchy bar. The icon uses the bar's urgent color
 // when CoolerBoost is enabled and the normal foreground when off.
 // Left click toggles CoolerBoost by running `sudo isw -b on/off`.
-// Right click refreshes the configured Hyprland shortcut tooltip.
 //
 // The widget registers an IPC target under its plugin id, so a Hyprland
 // shortcut can call the same toggle logic the widget uses:
@@ -34,9 +33,7 @@ Item {
   }
   function triggerPress(button) {
     if (root.bar) root.bar.hideTooltip(root)
-    if (button === Qt.RightButton) {
-      root.refreshShortcut()
-    } else {
+    if (button !== Qt.RightButton) {
       root.toggle()
     }
   }
@@ -56,7 +53,6 @@ Item {
   property string shortcut: "Unknown"
   property bool toggling: false
   property string tooltipText: "MSI CoolerBoost: " + (root.coolerBoostEnabled ? "ON" : "OFF")
-    + "\nShortcut: " + root.shortcut
 
   implicitWidth: root.barSize
   implicitHeight: root.barSize

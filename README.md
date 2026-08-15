@@ -48,7 +48,6 @@ The widget shows a fan icon that uses the theme's active/urgent color when
 CoolerBoost is on.
 
 - **Left click:** toggle CoolerBoost
-- **Right click:** refresh the configured shortcut tooltip
 
 A keyboard shortcut can run the same toggle the widget uses:
 
