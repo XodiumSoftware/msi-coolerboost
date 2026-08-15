@@ -29,7 +29,10 @@ omarchy plugin add https://github.com/XodiumSoftware/msi-coolerboost.git --enabl
 | File | Purpose |
 |------|---------|
 | `manifest.json` | Quickshell plugin manifest (`id: xodium.msi-coolerboost`) |
-| `BarWidget.qml` | Self-contained bar widget using only `QtQuick`, `Quickshell`, and `Quickshell.Io` |
+| `BarWidget.qml` | Self-contained bar widget using only `QtQuick`, `Quickshell`, and `Quickshell.Io`. Toggles via `sudo isw -b on/off` and reads `/tmp/isw_coolerboost` for state. |
+
+The Hyprland keybinding uses the same shell toggle the widget uses; the
+widget only reads the shortcut for display.
 
 The plugin exposes an IPC target `xodium.msi-coolerboost` with a `toggle()`
 method, so a Hyprland keyboard shortcut can call:

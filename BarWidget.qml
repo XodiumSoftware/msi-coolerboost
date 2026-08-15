@@ -9,9 +9,8 @@ import Quickshell.Io
 // Left click toggles CoolerBoost by running `sudo isw -b on/off`.
 // Right click refreshes the configured Hyprland shortcut tooltip.
 //
-// The widget exposes an IPC target `xodium.msi-coolerboost` with a `toggle()`
-// method, so a keyboard shortcut can call:
-//   omarchy-shell xodium.msi-coolerboost toggle
+// Bind a Hyprland key to the same shell toggle the widget uses, for example:
+//   o.bind("XF86Launch7", "Toggle CoolerBoost", "bash -c 'if [ -f /tmp/isw_coolerboost ]; then sudo isw -b off && rm -f /tmp/isw_coolerboost && notify-send -u low CoolerBoost OFF \"Fan boost disabled\"; else sudo isw -b on && echo on > /tmp/isw_coolerboost && notify-send -u low CoolerBoost ON \"Fan boost enabled\"; fi'")
 Item {
   id: root
 
