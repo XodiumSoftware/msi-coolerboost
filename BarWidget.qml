@@ -57,7 +57,6 @@ Item {
   property bool toggling: false
   property string tooltipText: "MSI CoolerBoost: " + (root.coolerBoostEnabled ? "ON" : "OFF")
     + "\nShortcut: " + root.shortcut
-    + "\nLeft click to toggle"
 
   implicitWidth: root.barSize
   implicitHeight: root.barSize
