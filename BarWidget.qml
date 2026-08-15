@@ -20,11 +20,25 @@ Item {
   property string moduleName: "xodium.msi-coolerboost"
   property var settings: ({})
 
+  // Expected by the Omarchy bar click/tooltip routing.
+  property bool interactive: true
+  property bool pressable: true
+  property bool concealed: false
+  readonly property bool tooltipHovered: visible && interactive && !concealed && mouseArea.containsMouse
+
   function registerWithBar() {
     if (root.bar && root.bar.registerClickTarget) root.bar.registerClickTarget(root)
   }
   function unregisterFromBar() {
     if (root.bar && root.bar.unregisterClickTarget) root.bar.unregisterClickTarget(root)
+  }
+  function triggerPress(button) {
+    if (root.bar) root.bar.hideTooltip(root)
+    if (button === Qt.RightButton) {
+      root.refreshShortcut()
+    } else {
+      root.toggle()
+    }
   }
 
   onBarChanged: {
@@ -131,20 +145,12 @@ Item {
     anchors.fill: parent
     acceptedButtons: Qt.LeftButton | Qt.RightButton
     hoverEnabled: true
-    cursorShape: Qt.PointingHandCursor
 
     onEntered: {
       if (root.bar) root.bar.showTooltip(root, root.tooltipText)
     }
     onExited: {
       if (root.bar) root.bar.hideTooltip(root)
-    }
-    onClicked: function(mouse) {
-      if (mouse.button === Qt.RightButton) {
-        root.refreshShortcut()
-      } else {
-        root.toggle()
-      }
     }
   }
 }
