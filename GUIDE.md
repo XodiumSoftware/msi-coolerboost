@@ -3,19 +3,18 @@
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
-- [Build from Source](#build-from-source)
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Usage](#usage)
+- [Troubleshooting](#troubleshooting)
 
 ---
 
 ## Prerequisites
 
-- Rust toolchain (install via [rustup](https://rustup.rs/))
 - `isw` installed and configured for your MSI laptop
-- Hyprland window manager
-- System tray support in your status bar
+- Omarchy 4 (Quattro)
+- Passwordless sudo for `isw -b on` and `isw -b off`
 
 ### Install `isw`
 
@@ -37,73 +36,21 @@ echo 'illyrius ALL=(ALL) NOPASSWD: /usr/bin/isw -b on, /usr/bin/isw -b off' | su
 
 ---
 
-## Build from Source
-
-```bash
-# Clone the repository
-git clone https://github.com/XodiumSoftware/msi-coolerboost.git
-cd msi-coolerboost
-
-# Build release binary
-cargo build --release
-```
-
----
-
 ## Installation
 
-### Manual Installation
+Install the plugin straight from git:
 
 ```bash
-# Copy binary
-cargo build --release
-sudo cp target/release/msi-coolerboost /usr/local/bin/
-
-# Copy desktop entry
-if [ -d "/usr/local/share/applications" ]; then
-    sudo cp msi-coolerboost.desktop /usr/local/share/applications/
-else
-    mkdir -p "$HOME/.local/share/applications"
-    cp msi-coolerboost.desktop "$HOME/.local/share/applications/"
-fi
+omarchy plugin add https://github.com/XodiumSoftware/msi-coolerboost.git --enable
 ```
 
-### Install Script
+Place it in the desired bar section if `--enable` did not pick one:
 
 ```bash
-# Install without enabling systemd autostart
-./install.sh
-
-# Install and enable systemd user service that starts the tray on login
-./install.sh --systemd
+omarchy plugin enable xodium.msi-coolerboost --section right
 ```
 
-When run without `--systemd`, the script will ask whether to enable the systemd user service.
-
-### Systemd User Service
-
-If you skipped the install-script setup, you can install and enable the service manually:
-
-```bash
-sudo tee /usr/lib/systemd/user/msi-coolerboost.service > /dev/null <<EOF
-[Unit]
-Description=MSI CoolerBoost system tray
-After=graphical-session.target
-
-[Service]
-Type=simple
-ExecStart=/usr/local/bin/msi-coolerboost tray
-Restart=on-failure
-RestartSec=5
-
-[Install]
-WantedBy=default.target
-WantedBy=graphical-session.target
-EOF
-
-systemctl --user daemon-reload
-systemctl --user enable --now msi-coolerboost.service
-```
+No autostart entry is needed; the bar widget is loaded by `omarchy-shell`.
 
 ---
 
@@ -111,19 +58,10 @@ systemctl --user enable --now msi-coolerboost.service
 
 ### Hyprland Keyboard Shortcut
 
-Add to `~/.config/hypr/bindings.conf`:
+On Omarchy 4 / Hyprland 0.56, add to `~/.config/hypr/bindings.lua`:
 
-```conf
-# CoolerBoost Fan Toggle
-bindd = SUPER CTRL, F, Toggle CoolerBoost, exec, msi-coolerboost toggle
-```
-
-### Autostart
-
-If you are **not** using the systemd user service, add to `~/.config/hypr/autostart.conf`:
-
-```conf
-exec-once = uwsm-app -- msi-coolerboost tray
+```lua
+o.bind("SUPER CTRL, F", "Toggle CoolerBoost", "omarchy-shell xodium.msi-coolerboost toggle")
 ```
 
 Reload Hyprland config:
@@ -136,47 +74,20 @@ hyprctl reload
 
 ## Usage
 
-### System Tray
+### Omarchy 4 Bar Widget
 
-Run the tray application:
+The fan icon appears in the bar section you chose (right by default).
 
-```bash
-msi-coolerboost tray
-```
-
-**Features:**
-- Click icon or select "Toggle CoolerBoost" to toggle
-- Green icon = ON, Gray icon = OFF
-- Shows notification on toggle
-- Right-click for menu options
+- **Left click:** toggle CoolerBoost
+- **Right click:** refresh the configured shortcut tooltip
 
 ### Keyboard Shortcut
 
-Press `Super + Ctrl + F` to toggle CoolerBoost instantly.
-
-### Command Line
-
-```bash
-# Toggle via CLI
-msi-coolerboost toggle
-# or simply:
-msi-coolerboost
-
-# Check current status
-ls /tmp/isw_coolerboost 2>/dev/null && echo "ON" || echo "OFF"
-```
+Press the key you bound to `omarchy-shell xodium.msi-coolerboost toggle`.
 
 ---
 
 ## Troubleshooting
-
-### "Command not found"
-
-Ensure `/usr/local/bin` is in your `$PATH`:
-
-```bash
-export PATH="$PATH:/usr/local/bin"
-```
 
 ### "Failed to toggle"
 
@@ -191,15 +102,20 @@ Should show:
 (ALL) NOPASSWD: /usr/bin/isw -b on, /usr/bin/isw -b off
 ```
 
-### Tray icon not appearing
+### Bar widget not appearing
 
-Ensure your status bar supports system tray icons (Waybar, etc.) and that the systemd user service is running:
+Confirm the plugin is installed and enabled:
 
 ```bash
-systemctl --user status msi-coolerboost.service
+omarchy plugin list
+omarchy plugin enable xodium.msi-coolerboost --section right
 ```
 
-If you are not using the systemd service, start the tray directly with `msi-coolerboost tray`.
+If the shell was already running, rescan plugins:
+
+```bash
+omarchy-shell shell rescanPlugins
+```
 
 ### "isw: command not found"
 

@@ -1,8 +1,0 @@
-[Desktop Entry]
-Name=MSI CoolerBoost Tray
-Comment=System tray control for MSI CoolerBoost
-Exec=/usr/bin/msi-coolerboost tray
-Type=Application
-Icon=utilities-system-monitor
-Categories=System;
-Terminal=false

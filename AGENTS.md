@@ -3,94 +3,64 @@
 ## Project at a Glance
 
 - **Name:** msi-coolerboost
-- **Type:** System tray application
-- **Language:** Rust
-- **Build Tool:** Cargo
-- **GUI Framework:** ksni
-- **Output:** One binary (`msi-coolerboost`) with `tray` and `toggle` subcommands
+- **Type:** Omarchy 4 bar widget plugin
+- **Language:** Quickshell QML
+- **GUI Framework:** Quickshell
+- **Output:** One plugin (`xodium.msi-coolerboost`) installed via `omarchy plugin add`
 
 ## APIs & Tools
 
 | Category | Technology | Purpose |
 |----------|------------|---------|
-| **GUI** | ksni | System tray icon and menu |
-| **Config Paths** | dirs | XDG directories |
-| **Notifications** | notify-rust | Desktop notifications |
+| **GUI** | QtQuick + Quickshell | Omarchy 4 bar widget |
+| **Notifications** | notify-send | Desktop notifications |
+| **Privilege** | sudo | Run `isw` to toggle CoolerBoost |
 
-## Quick Commands
+## Installation
 
 ```bash
-# Build (debug)
-cargo build
-
-# Build (release)
-cargo build --release
-
-# Run system tray
-cargo run -- tray
-
-# Run toggle (CLI)
-cargo run -- toggle
-# or simply:
-cargo run
-
-# Install with systemd autostart
-./install.sh --systemd
+omarchy plugin add https://github.com/XodiumSoftware/msi-coolerboost.git --enable
 ```
 
 ## Architecture Overview
 
-### Binaries
+### Plugin (repo root)
 
-- **`msi-coolerboost tray`** (`src/tray_mode.rs`) — System tray GUI
-- **`msi-coolerboost toggle`** (`src/toggle_mode.rs` and `src/main.rs`) — CLI toggle command
+| File | Purpose |
+|------|---------|
+| `manifest.json` | Quickshell plugin manifest (`id: xodium.msi-coolerboost`) |
+| `BarWidget.qml` | Self-contained bar widget using only `QtQuick`, `Quickshell`, and `Quickshell.Io` |
 
-### Library (`src/lib.rs`)
+The plugin exposes an IPC target `xodium.msi-coolerboost` with a `toggle()`
+method, so a Hyprland keyboard shortcut can call:
 
-Core functionality shared between binaries:
-
-| Function | Purpose |
-|----------|---------|
-| `check_status()` | Check CoolerBoost state via file |
-| `toggle()` | Toggle via `isw`, show notification |
-| `get_current_shortcut()` | Parse Hyprland config |
-| `show_notification()` | Desktop notifications |
-| `create_icon_rgba()` | Generate status icon |
+```bash
+omarchy-shell xodium.msi-coolerboost toggle
+```
 
 ### State Management
 
 - State file: `/tmp/isw_coolerboost`
-- Created = ON, absent = OFF
+- Created with content `"on"` = ON, absent = OFF
 - Mirrors `isw` internal state
-
-### Icon Colors
-
-- **ON:** Green (#4CAF50)
-- **OFF:** Gray (#757575)
 
 ## Hyprland Integration
 
-**Keyboard shortcut (bindings.conf):**
-```conf
-bindd = SUPER CTRL, F, Toggle CoolerBoost, exec, msi-coolerboost toggle
+**Keyboard shortcut (bindings.lua for Omarchy 4 / Hyprland 0.56):**
+```lua
+o.bind("SUPER CTRL, F", "Toggle CoolerBoost", "omarchy-shell xodium.msi-coolerboost toggle")
 ```
 
-**Autostart (autostart.conf):**
-```conf
-exec-once = uwsm-app -- msi-coolerboost tray
+**Omarchy 4 autostart:** the bar widget is loaded by `omarchy-shell`; no
+autostart entry is needed. Enable it with:
+```bash
+omarchy plugin enable xodium.msi-coolerboost --section right
 ```
-
-## Key Conventions
-
-- `unsafe_code` is forbidden
-- All Clippy warnings enabled
-- Release profile: LTO + strip symbols
-- State stored in tmpfs (cleared on reboot)
 
 ## Documentation Guidelines
 
-- **Public APIs** — Document with `///`
-- **Binaries** — Explain purpose in module docs
+- **Plugin manifest** — Keep `manifest.json` valid and up to date
+- **Bar widget** — Document non-obvious QML behavior with comments
 
 ## Claude Code Workflow
 
@@ -103,19 +73,15 @@ exec-once = uwsm-app -- msi-coolerboost tray
 
 1. **README.md** — Update if usage/installation changes
 2. **AGENTS.md** — Update if new tools/APIs added
+3. **GUIDE.md** — Update end-user instructions
 
 ## CI/CD
 
-Implemented via `.github/workflows/rust.yml`:
+Implemented via `.github/workflows/ci.yml`:
 
 | Job | Trigger | Purpose |
 |-----|---------|---------|
-| **Lint** | PR / push | `cargo clippy` + `cargo fmt` |
-| **Test** | PR / push | `cargo test` |
-| **Build** | PR / push / release | Release binary `msi-coolerboost` |
-| **Nightly Release** | Push to `main` | Updates `nightly` tag with latest binaries |
-| **Stable Release** | Release published | Attaches binaries to the GitHub release |
-| **Docs** | Push to `main` | Builds and deploys rustdoc to GitHub Pages |
-| **AUR Publish** | Release / manual | Updates AUR `PKGBUILD` and `.SRCINFO` |
+| **Validate** | PR / push | Validate `manifest.json` with `jq` |
 
-Builds use `sccache` with the GitHub Actions cache backend. The release binary name matches the package name in `PKGBUILD` (`msi-coolerboost`).
+A future improvement could run `omarchy-plugin-validate` on an Omarchy runner
+and lint the QML with Quickshell tooling.

@@ -1,0 +1,21 @@
+name: Validate Manifest CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Validate Plugin Manifest
+    runs-on: ubuntu-latest
+    steps:
+      - id: checkout
+        name: Checkout
+        uses: actions/checkout@v4
+
+      - id: validate_manifest
+        name: Validate manifest.json
+        run: jq -e . manifest.json
+        shell: bash

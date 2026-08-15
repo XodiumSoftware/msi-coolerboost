@@ -11,7 +11,7 @@
   <br />
 </h1>
 
-<h4 align="center">System tray control for MSI laptop fan boost</h4><br />
+<h4 align="center">Omarchy 4 bar widget for MSI laptop fan boost</h4><br />
 
 <div align="center">
 
@@ -32,10 +32,10 @@
 
 ## Features
 
-- System tray icon showing CoolerBoost status (green = ON, gray = OFF)
-- Click tray icon to toggle
+- Omarchy 4 bar widget for CoolerBoost status and toggle
 - Desktop notifications on toggle
-- Keyboard shortcut support (configured in Hyprland)
+- Keyboard shortcut support through the Omarchy shell IPC
+- No extra binary or CLI to install
 
 ## Built With
 
@@ -44,9 +44,30 @@
 [![Built With][built_with_shield_url]][built_with_url]
 </div>
 
-<p align="right"><a href="#readme-top">▲</a></p>
+### Omarchy 4 Plugin
 
-[built_with_shield_url]: https://skillicons.dev/icons?i=rust,github
+Install the plugin straight from git:
+
+```bash
+omarchy plugin add https://github.com/XodiumSoftware/msi-coolerboost.git --enable
+```
+
+The widget shows a fan icon that uses the theme's active/urgent color when
+CoolerBoost is on.
+
+- **Left click:** toggle CoolerBoost
+- **Right click:** refresh the configured shortcut tooltip
+
+A keyboard shortcut can call the widget directly:
+
+```lua
+o.bind("SUPER CTRL, F", "Toggle CoolerBoost", "omarchy-shell xodium.msi-coolerboost toggle")
+```
+
+<p align="right"><a href="#readme-top">▲</a></p>
+[![Built With][built_with_shield_url]][built_with_url]
+
+[built_with_shield_url]: https://skillicons.dev/icons?i=github
 
 [built_with_url]: https://skillicons.dev
 
