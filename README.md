@@ -24,7 +24,6 @@
 
 - [Guide](GUIDE.md)
 - [Features](#features)
-- [Built With](#built-with)
 - [Code of Conduct][code_of_conduct_url]
 - [Contributing][contributing_url]
 - [License][license_url]
@@ -37,14 +36,7 @@
 - Keyboard shortcut support through the Omarchy shell IPC
 - No extra binary or CLI to install
 
-## Built With
-
-<div align="center">
-
-[![Built With][built_with_shield_url]][built_with_url]
-</div>
-
-### Omarchy 4 Plugin
+## Installation
 
 Install the plugin straight from git:
 
@@ -65,11 +57,6 @@ o.bind("SUPER CTRL, F", "Toggle CoolerBoost", "omarchy-shell xodium.msi-coolerbo
 ```
 
 <p align="right"><a href="#readme-top">▲</a></p>
-[![Built With][built_with_shield_url]][built_with_url]
-
-[built_with_shield_url]: https://skillicons.dev/icons?i=github
-
-[built_with_url]: https://skillicons.dev
 
 [code_of_conduct_url]: https://github.com/XodiumSoftware/msi-coolerboost?tab=coc-ov-file
 
