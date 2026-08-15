@@ -61,16 +61,13 @@ Item {
     if (root.toggling) return
     root.toggling = true
     toggleCooldown.restart()
+    syncTimer.start()
     if (root.coolerBoostEnabled) {
-      Quickshell.execDetached([
-        "bash", "-c",
-        "sudo isw -b off && rm -f /tmp/isw_coolerboost && notify-send -u low 'CoolerBoost OFF' 'Fan boost disabled'"
-      ])
+      Quickshell.execDetached(["sudo", "isw", "-b", "off"])
+      Quickshell.execDetached(["bash", "-c", "rm -f /tmp/isw_coolerboost && notify-send -u low 'CoolerBoost OFF' 'Fan boost disabled'"])
     } else {
-      Quickshell.execDetached([
-        "bash", "-c",
-        "sudo isw -b on && echo on > /tmp/isw_coolerboost && notify-send -u low 'CoolerBoost ON' 'Fan boost enabled'"
-      ])
+      Quickshell.execDetached(["sudo", "isw", "-b", "on"])
+      Quickshell.execDetached(["bash", "-c", "echo on > /tmp/isw_coolerboost && notify-send -u low 'CoolerBoost ON' 'Fan boost enabled'"])
     }
   }
 
