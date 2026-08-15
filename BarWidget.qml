@@ -29,17 +29,13 @@ Item {
   implicitHeight: root.barSize
 
   function toggle() {
+    if (toggleProc.running) return
     if (root.coolerBoostEnabled) {
-      Quickshell.execDetached([
-        "bash", "-c",
-        "sudo isw -b off && rm -f /tmp/isw_coolerboost && notify-send -u low 'CoolerBoost OFF' 'Fan boost disabled'"
-      ])
+      toggleProc.command = ["bash", "-c", "sudo isw -b off"]
     } else {
-      Quickshell.execDetached([
-        "bash", "-c",
-        "sudo isw -b on && echo on > /tmp/isw_coolerboost && notify-send -u low 'CoolerBoost ON' 'Fan boost enabled'"
-      ])
+      toggleProc.command = ["bash", "-c", "sudo isw -b on"]
     }
+    toggleProc.running = true
   }
 
   function refreshShortcut() {
@@ -60,6 +56,32 @@ Item {
     printErrors: false
     onLoaded: root.refreshShortcut()
     onFileChanged: root.refreshShortcut()
+  }
+
+  Process {
+    id: toggleProc
+    command: ["bash", "-c", "true"]
+    onExited: function(exitCode) {
+      if (exitCode === 0) {
+        if (root.coolerBoostEnabled) {
+          Quickshell.execDetached(["bash", "-c", "rm -f /tmp/isw_coolerboost"])
+          Quickshell.execDetached(["notify-send", "-u", "low", "CoolerBoost OFF", "Fan boost disabled"])
+        } else {
+          Quickshell.execDetached(["bash", "-c", "echo on > /tmp/isw_coolerboost"])
+          Quickshell.execDetached(["notify-send", "-u", "low", "CoolerBoost ON", "Fan boost enabled"])
+        }
+      } else {
+        Quickshell.execDetached(["notify-send", "-u", "critical", "CoolerBoost Error", "isw command failed"])
+      }
+      syncTimer.restart()
+    }
+  }
+
+  Timer {
+    id: syncTimer
+    interval: 500
+    repeat: false
+    onTriggered: stateFile.reload()
   }
 
   Process {
