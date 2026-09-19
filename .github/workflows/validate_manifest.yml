@@ -1,4 +1,4 @@
-name: Validate Manifest CI/CD
+name: Validate Plugin CI/CD
 
 on:
   push:
@@ -8,14 +8,40 @@ on:
 
 jobs:
   validate:
-    name: Validate Plugin Manifest
+    name: Validate Plugin
     runs-on: ubuntu-latest
     steps:
       - id: checkout
         name: Checkout
         uses: actions/checkout@v4
 
-      - id: validate_manifest
-        name: Validate manifest.json
-        run: jq -e . manifest.json
+      - id: validate_plugin
+        name: Validate plugin.toml and catalog.toml
+        run: |
+          python3 - <<'EOF'
+          import sys
+          import tomllib
+
+          def load(path):
+              with open(path, "rb") as f:
+                  return tomllib.load(f)
+
+          manifest = load("msi-coolerboost/plugin.toml")
+          for key in ("id", "name", "version", "plugin_api"):
+              assert key in manifest, f"plugin.toml missing required key: {key}"
+          assert "/" in manifest["id"], "plugin id must be <author>/<plugin>"
+          assert isinstance(manifest["plugin_api"], int) and manifest["plugin_api"] > 0
+          assert manifest.get("widget"), "plugin.toml must declare at least one entry"
+          for entry in manifest["widget"] + manifest.get("service", []):
+              assert "id" in entry and "entry" in entry, "entry missing id or entry file"
+
+          catalog = load("catalog.toml")
+          for row in catalog.get("plugin", []):
+              for key in ("id", "name", "plugin_api"):
+                  assert key in row, f"catalog row missing required key: {key}"
+
+          versions = {p["version"] for p in catalog["plugin"]}
+          assert manifest["version"] in versions, "catalog.toml and plugin.toml versions differ"
+          print("plugin.toml and catalog.toml valid")
+          EOF
         shell: bash

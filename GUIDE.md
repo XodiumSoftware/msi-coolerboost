@@ -13,13 +13,13 @@
 ## Prerequisites
 
 - `isw` installed and configured for your MSI laptop
-- Omarchy 4 (Quattro)
+- CachyOS with niri and Noctalia v5
 - Passwordless sudo for `isw -b on` and `isw -b off`
 
 ### Install `isw`
 
 ```bash
-# Arch Linux (AUR)
+# Arch / CachyOS (AUR)
 yay -S isw
 
 # Configure for your laptop model
@@ -38,57 +38,89 @@ echo 'illyrius ALL=(ALL) NOPASSWD: /usr/bin/isw -b on, /usr/bin/isw -b off' | su
 
 ## Installation
 
-Install the plugin straight from git:
+### From git
+
+Add this repo as a plugin source and enable the plugin:
 
 ```bash
-omarchy plugin add https://github.com/XodiumSoftware/msi-coolerboost.git --enable
+noctalia msg plugins source add xodium git https://github.com/XodiumSoftware/msi-coolerboost.git
+noctalia msg plugins enable xodium/msi-coolerboost
 ```
 
-Place it in the desired bar section if `--enable` did not pick one:
+### From a local checkout (development)
+
+Point a path source at the repo; edits to `widget.luau` hot-reload:
 
 ```bash
-omarchy plugin enable xodium.msi-coolerboost --section right
+noctalia msg plugins source add dev path /mnt/hdd/Projects/msi-coolerboost
+noctalia msg plugins enable xodium/msi-coolerboost
 ```
 
-No autostart entry is needed; the bar widget is loaded by `omarchy-shell`.
+Alternatively, symlink the plugin directory into the state-dir drop-in:
+
+```bash
+mkdir -p ~/.local/share/noctalia/plugins
+ln -s /mnt/hdd/Projects/msi-coolerboost/msi-coolerboost ~/.local/share/noctalia/plugins/msi-coolerboost
+noctalia msg plugins enable xodium/msi-coolerboost
+```
+
+### Add the widget to a bar
+
+Either via **Settings → Bar → Add widget** (pick
+`xodium/msi-coolerboost:coolerboost`), or by hand in
+`~/.config/noctalia/config.toml`:
+
+```toml
+[widget.coolerboost]
+type = "xodium/msi-coolerboost:coolerboost"
+
+[bar.default]
+end = ["coolerboost"]
+```
+
+Verify the plugin is enabled:
+
+```bash
+noctalia msg plugins list
+```
 
 ---
 
 ## Configuration
 
-### Hyprland Keyboard Shortcut
+### niri Keyboard Shortcut
 
-On Omarchy 4 / Hyprland 0.56, add to `~/.config/hypr/bindings.lua`:
+Add to `~/.config/niri/cfg/keybinds.kdl` inside the `binds` block:
 
-```lua
-o.bind("XF86Launch7", "Toggle CoolerBoost", "omarchy-shell xodium.msi-coolerboost toggle")
+```kdl
+XF86Launch7 allow-when-locked=true hotkey-overlay-title="Toggle CoolerBoost" { spawn-sh "noctalia msg plugin xodium/msi-coolerboost:coolerboost all toggle"; }
 ```
 
-Reload Hyprland config:
-
-```bash
-hyprctl reload
-```
+niri hot-reloads its config automatically.
 
 ---
 
 ## Usage
 
-### Omarchy 4 Bar Widget
+### Noctalia Bar Widget
 
-The fan icon appears in the bar section you chose (right by default).
+The propeller icon appears in the bar section you chose. It uses the palette's
+error color while CoolerBoost is on.
 
 - **Left click:** toggle CoolerBoost
+- **Tooltip:** shows `MSI CoolerBoost: ON/OFF`
 
 ### Keyboard Shortcut
 
-Press the key you bound to `omarchy-shell xodium.msi-coolerboost toggle`.
+Press the key you bound (`XF86Launch7` is the MSI CoolerBoost button).
+The keybind dispatches a `toggle` event to every live widget instance, so it
+works from anywhere while Noctalia is running.
 
 ---
 
 ## Troubleshooting
 
-### "Failed to toggle"
+### "CoolerBoost failed to toggle"
 
 Check sudoers is configured:
 
@@ -97,23 +129,30 @@ sudo -l | grep isw
 ```
 
 Should show:
+
 ```
 (ALL) NOPASSWD: /usr/bin/isw -b on, /usr/bin/isw -b off
 ```
 
-### Bar widget not appearing
-
-Confirm the plugin is installed and enabled:
+Test the toggle directly:
 
 ```bash
-omarchy plugin list
-omarchy plugin enable xodium.msi-coolerboost --section right
+noctalia msg plugin xodium/msi-coolerboost:coolerboost all toggle
 ```
 
-If the shell was already running, rescan plugins:
+### Bar widget not appearing
+
+Confirm the plugin is enabled, then check the widget was added to the bar
+(Settings → Bar, or `[widget.coolerboost]` + `[bar.default]` in `config.toml`):
 
 ```bash
-omarchy-shell shell rescanPlugins
+noctalia msg plugins list
+```
+
+Validate the plugin structure offline:
+
+```bash
+noctalia plugins lint /mnt/hdd/Projects/msi-coolerboost
 ```
 
 ### "isw: command not found"

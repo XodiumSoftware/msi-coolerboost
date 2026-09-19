@@ -11,7 +11,7 @@
   <br />
 </h1>
 
-<h4 align="center">Omarchy 4 bar widget for MSI laptop fan boost</h4><br />
+<h4 align="center">Noctalia bar widget for MSI laptop fan boost</h4><br />
 
 <div align="center">
 
@@ -31,28 +31,48 @@
 
 ## Features
 
-- Omarchy 4 bar widget for CoolerBoost status and toggle
+- Noctalia (v5) bar widget showing CoolerBoost status with click-to-toggle
 - Desktop notifications on toggle
-- Keyboard shortcut support through the Omarchy shell IPC
-- No extra binary or CLI to install
+- Keyboard shortcut support through Noctalia's plugin IPC
+- Installable from a git source, a local path source, or the state-dir drop-in
 
 ## Installation
 
-Install the plugin straight from git:
+Add this repo as a plugin source and enable the plugin:
 
 ```bash
-omarchy plugin add https://github.com/XodiumSoftware/msi-coolerboost.git --enable
+noctalia msg plugins source add xodium git https://github.com/XodiumSoftware/msi-coolerboost.git
+noctalia msg plugins enable xodium/msi-coolerboost
 ```
 
-The widget shows a fan icon that uses the theme's active/urgent color when
-CoolerBoost is on.
+Or, for a local checkout (hot-reloads edits, ideal for development):
+
+```bash
+noctalia msg plugins source add dev path /path/to/msi-coolerboost
+noctalia msg plugins enable xodium/msi-coolerboost
+```
+
+The widget then shows up in **Settings → Bar → Add widget** as
+`xodium/msi-coolerboost:coolerboost`, or add it to a bar by hand:
+
+```toml
+[widget.coolerboost]
+type = "xodium/msi-coolerboost:coolerboost"
+
+[bar.default]
+end = ["coolerboost"]
+```
+
+The propeller glyph uses the palette's error color when CoolerBoost is on and
+the normal text color when off.
 
 - **Left click:** toggle CoolerBoost
 
-A keyboard shortcut can run the same toggle the widget uses:
+A niri keybind can run the same toggle the widget uses
+(`~/.config/niri/cfg/keybinds.kdl`):
 
-```lua
-o.bind("XF86Launch7", "Toggle CoolerBoost", "omarchy-shell xodium.msi-coolerboost toggle")
+```kdl
+XF86Launch7 allow-when-locked=true hotkey-overlay-title="Toggle CoolerBoost" { spawn-sh "noctalia msg plugin xodium/msi-coolerboost:coolerboost all toggle"; }
 ```
 
 <p align="right"><a href="#readme-top">▲</a></p>

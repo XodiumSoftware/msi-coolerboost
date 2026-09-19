@@ -1,0 +1,14 @@
+id           = "xodium/msi-coolerboost"
+name         = "MSI CoolerBoost"
+version      = "2.0.0"
+plugin_api   = 3
+author       = "Xodium"
+license      = "AGPL-3.0-only"
+icon         = "propeller"
+description  = "MSI laptop CoolerBoost fan-boost status and toggle bar widget"
+tags         = ["hardware", "fan", "msi"]
+dependencies = ["isw"]
+
+[[widget]]
+id    = "coolerboost"
+entry = "widget.luau"
